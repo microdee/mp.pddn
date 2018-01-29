@@ -7,13 +7,13 @@ assembly_info:
   assembly_file_version: '{version}'
   assembly_informational_version: '{version}'
 before_build:
-- ps: nuget restore md.pddn\md.pddn.sln -verbosity quiet -Source http://vvvv.org:8111/guestAuth/app/nuget/v1/FeedService.svc/
+- ps: nuget restore md.pddn.sln -verbosity quiet -Source http://vvvv.org:8111/guestAuth/app/nuget/v1/FeedService.svc/
 build:
   publish_nuget: true
   verbosity: minimal
 test: off
 before_deploy:
-- ps: nuget pack mp.pddn\mp.pddn.csproj -Version $env:appveyor_build_version
+- ps: nuget pack mp.pddn.csproj -Version $env:appveyor_build_version
 deploy:
 - provider: NuGet
   api_key:

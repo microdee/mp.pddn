@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>mp.pddn</id>
+    <version>$version$</version>
+    <title>mp.pddn</title>
+    <authors>David Mórász (microdee)</authors>
+    <owners>David Mórász (microdee)</owners>
+    <!--licenseUrl>http://LICENSE_URL_HERE_OR_DELETE_THIS_LINE</licenseUrl>
+    <iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl-->
+    <projectUrl>https://github.com/microdee/mp.pddn</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Common node patterns and utilities for VVVV</description>
+    <releaseNotes>none</releaseNotes>
+    <copyright>Copyright © 2017 by David Mórász</copyright>
+    <tags>vvvv dynamic pins abstract nodes</tags>
+  </metadata>
+</package>
