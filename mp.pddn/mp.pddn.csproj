@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{77EFA298-9234-485B-80E0-A8D8EAEB0D81}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>mp.pddn</RootNamespace>
+    <AssemblyName>mp.pddn</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition.CodePlex, Version=4.1.2.0, Culture=neutral, PublicKeyToken=13e5ffd4e05db186, processorArchitecture=MSIL">
+      <HintPath>packages\VVVV.System.ComponentModel.Composition.Codeplex.2.5.0\lib\net40\System.ComponentModel.Composition.CodePlex.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="VVVV.Core, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\VVVV.Core.35.15.0-develop-3295\lib\net46\VVVV.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VVVV.Hosting, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>packages\VVVV.Hosting.35.15.0-develop-3295\build\net46\lib\AnyCPU\VVVV.Hosting.dll</HintPath>
+    </Reference>
+    <Reference Include="VVVV.Nodes.Generic, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>packages\VVVV.Nodes.Generic.35.15.0-develop-3295\build\net46\lib\AnyCPU\VVVV.Nodes.Generic.dll</HintPath>
+    </Reference>
+    <Reference Include="VVVV.PluginInterfaces, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>packages\VVVV.PluginInterfaces.35.15.0-develop-3295\build\net46\lib\AnyCPU\VVVV.PluginInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="VVVV.Utils, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\VVVV.Utils.35.15.0-develop-3295\lib\net46\VVVV.Utils.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VVVV.Utils3rdParty, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>packages\VVVV.Utils3rdParty.35.15.0-develop-3295\build\net46\lib\AnyCPU\VVVV.Utils3rdParty.dll</HintPath>
+    </Reference>
+    <Reference Include="VVVV.UtilsIL, Version=35.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\VVVV.UtilsIL.35.15.0-develop-3295\lib\net46\VVVV.UtilsIL.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CommonAbstractNodePatterns.cs" />
+    <Compile Include="ConfigurableDynamicPinNode.cs" />
+    <Compile Include="NodeExtensions.cs" />
+    <Compile Include="NodePinSimple.cs" />
+    <Compile Include="PDDN.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="packages\VVVV.Hosting.35.15.0-develop-3295\build\net46\VVVV.Hosting.targets" Condition="Exists('packages\VVVV.Hosting.35.15.0-develop-3295\build\net46\VVVV.Hosting.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\VVVV.Hosting.35.15.0-develop-3295\build\net46\VVVV.Hosting.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\VVVV.Hosting.35.15.0-develop-3295\build\net46\VVVV.Hosting.targets'))" />
+    <Error Condition="!Exists('packages\VVVV.Nodes.Generic.35.15.0-develop-3295\build\net46\VVVV.Nodes.Generic.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\VVVV.Nodes.Generic.35.15.0-develop-3295\build\net46\VVVV.Nodes.Generic.targets'))" />
+    <Error Condition="!Exists('packages\VVVV.PluginInterfaces.35.15.0-develop-3295\build\net46\VVVV.PluginInterfaces.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\VVVV.PluginInterfaces.35.15.0-develop-3295\build\net46\VVVV.PluginInterfaces.targets'))" />
+    <Error Condition="!Exists('packages\VVVV.Utils3rdParty.35.15.0-develop-3295\build\net46\VVVV.Utils3rdParty.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\VVVV.Utils3rdParty.35.15.0-develop-3295\build\net46\VVVV.Utils3rdParty.targets'))" />
+  </Target>
+  <Import Project="packages\VVVV.Nodes.Generic.35.15.0-develop-3295\build\net46\VVVV.Nodes.Generic.targets" Condition="Exists('packages\VVVV.Nodes.Generic.35.15.0-develop-3295\build\net46\VVVV.Nodes.Generic.targets')" />
+  <Import Project="packages\VVVV.PluginInterfaces.35.15.0-develop-3295\build\net46\VVVV.PluginInterfaces.targets" Condition="Exists('packages\VVVV.PluginInterfaces.35.15.0-develop-3295\build\net46\VVVV.PluginInterfaces.targets')" />
+  <Import Project="packages\VVVV.Utils3rdParty.35.15.0-develop-3295\build\net46\VVVV.Utils3rdParty.targets" Condition="Exists('packages\VVVV.Utils3rdParty.35.15.0-develop-3295\build\net46\VVVV.Utils3rdParty.targets')" />
+</Project>
