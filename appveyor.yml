@@ -1,5 +1,7 @@
 version: 1.1.{build}
 image: Visual Studio 2017
+configuration: Release
+platform: Any CPU
 assembly_info:
   patch: true
   file: '**\AssemblyInfo.*'
@@ -7,9 +9,10 @@ assembly_info:
   assembly_file_version: '{version}'
   assembly_informational_version: '{version}'
 before_build:
-- ps: nuget restore mp.pddn/mp.pddn.sln -verbosity quiet -Source http://vvvv.org:8111/guestAuth/app/nuget/v1/FeedService.svc/
+- ps: nuget restore mp.pddn/mp.pddn.sln -verbosity quiet
 build:
   publish_nuget: true
+  include_nuget_references: true
   verbosity: minimal
 test: off
 before_deploy:
