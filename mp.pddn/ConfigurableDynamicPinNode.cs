@@ -5,6 +5,10 @@ using VVVV.PluginInterfaces.V2;
 
 namespace VVVV.Nodes.PDDN
 {
+    /// <summary>
+    /// Abstract class evading bugs with single config pin, dynamic pins nodes
+    /// </summary>
+    /// <typeparam name="TConfigType">The type of the configuration</typeparam>
     public abstract class ConfigurableDynamicPinNode<TConfigType> : IPartImportsSatisfiedNotification
     {
         protected IDiffSpread<TConfigType> ConfigPinCopy;

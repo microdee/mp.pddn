@@ -9,6 +9,9 @@ using NGIDiffSpread = VVVV.PluginInterfaces.V2.NonGeneric.IDiffSpread;
 
 namespace VVVV.Nodes.PDDN
 {
+    /// <summary>
+    /// An abstract pin wrapper containing all types a pin is operating with
+    /// </summary>
     public abstract class SimplePin
     {
         public object CustomData;
@@ -16,6 +19,10 @@ namespace VVVV.Nodes.PDDN
         public IOAttribute Attributes;
         public IIOContainer IOContainer;
     }
+
+    /// <summary>
+    /// Simple pin with spread
+    /// </summary>
     public class SpreadPin : SimplePin
     {
         public NGISpread Spread;
@@ -26,6 +33,10 @@ namespace VVVV.Nodes.PDDN
             Spread = spread;
         }
     }
+
+    /// <summary>
+    /// Simple pin with DiffSpread
+    /// </summary>
     public class DiffSpreadPin : SimplePin
     {
         public NGIDiffSpread Spread;
@@ -36,22 +47,10 @@ namespace VVVV.Nodes.PDDN
             Spread = spread;
         }
     }
-    public static class NodeUtils
-    {
-        public static NGISpread ToISpread(this IIOContainer pin)
-        {
-            return (NGISpread)(pin.RawIOObject);
-        }
 
-        public static NGIDiffSpread ToIDiffSpread(this IIOContainer pin)
-        {
-            return (NGIDiffSpread)(pin.RawIOObject);
-        }
-        public static ISpread<T> ToGenericISpread<T>(this IIOContainer pin)
-        {
-            return (ISpread<T>)(pin.RawIOObject);
-        }
-    }
+    /// <summary>
+    /// Simple class component for managing group of massively dynamic pins
+    /// </summary>
     public class PinDictionary
     {
         protected IIOFactory FIOFactory;

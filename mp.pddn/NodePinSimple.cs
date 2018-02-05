@@ -9,9 +9,19 @@ using VVVV.Utils.Win32;
 
 namespace VVVV.Nodes.PDDN
 {
+    /// <summary>
+    /// An easy to use input which accepts anything
+    /// </summary>
     public class GenericInput
     {
-        public INodeIn Pin;
+        private INodeIn _pin;
+
+        public INodeIn Pin
+        {
+            get => _pin;
+            private set => _pin = value;
+        }
+
         public bool Connected
         {
             get
@@ -27,7 +37,7 @@ namespace VVVV.Nodes.PDDN
             {
                 if (!Connected) return null;
                 var usi = GetUpstreamInterface();
-                Pin.GetUpsreamSlice(i, out var ui);
+                _pin.GetUpsreamSlice(i, out var ui);
                 switch (usi)
                 {
                     case IValueData _:
@@ -66,22 +76,38 @@ namespace VVVV.Nodes.PDDN
 
         public object GetUpstreamInterface()
         {
-            Pin.GetUpstreamInterface(out object usi);
+            _pin.GetUpstreamInterface(out object usi);
             return usi;
         }
 
         public GenericInput(IPluginHost plgh, IOAttribute attr)
         {
-            plgh.CreateNodeInput(attr.Name, (TSliceMode)attr.SliceMode, (TPinVisibility)attr.Visibility, out Pin);
-            Pin.SetSubType2(null, new Guid[] { }, "Variant");
-            Pin.Order = attr.Order;
+            plgh.CreateNodeInput(attr.Name, (TSliceMode)attr.SliceMode, (TPinVisibility)attr.Visibility, out _pin);
+            _pin.SetSubType2(null, new Guid[] { }, "Variant");
+            _pin.Order = attr.Order;
         }
     }
 
+    /// <summary>
+    /// An easy to use binsized input which accepts anything
+    /// </summary>
     public class GenericBinSizedInput
     {
-        public INodeIn Pin;
-        public IValueIn BinSizePin;
+        private INodeIn _pin;
+        private IValueIn _binSizePin;
+
+        public INodeIn Pin
+        {
+            get => _pin;
+            private set => _pin = value;
+        }
+
+        public IValueIn BinSizePin
+        {
+            get => _binSizePin;
+            private set => _binSizePin = value;
+        }
+
         public bool Connected
         {
             get
@@ -97,13 +123,13 @@ namespace VVVV.Nodes.PDDN
             
             int currslice = 0;
             int cb = 0;
-            while (currslice < Pin.SliceCount)
+            while (currslice < _pin.SliceCount)
             {
-                if ((cb > BinSizePin.SliceCount) && (currslice <= 0))
+                if ((cb > _binSizePin.SliceCount) && (currslice <= 0))
                     break;
-                int mcb = cb % BinSizePin.SliceCount;
+                int mcb = cb % _binSizePin.SliceCount;
                 double btemp = 0;
-                BinSizePin.GetValue(mcb, out btemp);
+                _binSizePin.GetValue(mcb, out btemp);
                 int cbin = (int)btemp;
                 if (cbin > 0)
                 {
@@ -127,12 +153,12 @@ namespace VVVV.Nodes.PDDN
                 int slicecount = 0;
                 int currslice = 0;
                 int cb = 0;
-                while (currslice < Pin.SliceCount)
+                while (currslice < _pin.SliceCount)
                 {
-                    if ((cb >= BinSizePin.SliceCount) && (currslice <= 0))
+                    if ((cb >= _binSizePin.SliceCount) && (currslice <= 0))
                         break;
-                    int mcb = cb % BinSizePin.SliceCount;
-                    BinSizePin.GetValue(mcb, out var btemp);
+                    int mcb = cb % _binSizePin.SliceCount;
+                    _binSizePin.GetValue(mcb, out var btemp);
                     int cbin = (int)btemp;
                     if (cbin > 0)
                     {
@@ -153,20 +179,20 @@ namespace VVVV.Nodes.PDDN
             {
                 if (!Connected) return null;
                 var usi = GetUpstreamInterface();
-                BinSizePin.GetValue(i, out var btemp);
+                _binSizePin.GetValue(i, out var btemp);
                 int currbin = (int) btemp;
                 var offsets = ConstructBinOffsets();
                 int curroffs = offsets[i % offsets.Count];
                 if (currbin < 0)
                 {
-                    currbin = Pin.SliceCount;
+                    currbin = _pin.SliceCount;
                     curroffs = 0;
                 }
                 var res = new List<object>();
 
                 for (int j = 0; j < currbin; j++)
                 {
-                    Pin.GetUpsreamSlice(curroffs + j, out var ui);
+                    _pin.GetUpsreamSlice(curroffs + j, out var ui);
                     switch (usi)
                     {
                         case IValueData _:
@@ -212,18 +238,18 @@ namespace VVVV.Nodes.PDDN
 
         public object GetUpstreamInterface()
         {
-            Pin.GetUpstreamInterface(out object usi);
+            _pin.GetUpstreamInterface(out object usi);
             return usi;
         }
 
         public GenericBinSizedInput(IPluginHost plgh, InputAttribute attr)
         {
-            plgh.CreateNodeInput(attr.Name, (TSliceMode)attr.SliceMode, (TPinVisibility)attr.Visibility, out Pin);
-            plgh.CreateValueInput(attr.Name + " Bin Size", 1, null, TSliceMode.Dynamic, (TPinVisibility) attr.Visibility, out BinSizePin);
-            Pin.SetSubType2(null, new Guid[] { }, "Variant");
-            BinSizePin.SetSubType(-1, double.MaxValue, 1, attr.BinSize, false, false, true);
-            Pin.Order = attr.Order;
-            BinSizePin.Order = attr.BinOrder;
+            plgh.CreateNodeInput(attr.Name, (TSliceMode)attr.SliceMode, (TPinVisibility)attr.Visibility, out _pin);
+            plgh.CreateValueInput(attr.Name + " Bin Size", 1, null, TSliceMode.Dynamic, (TPinVisibility) attr.Visibility, out _binSizePin);
+            _pin.SetSubType2(null, new Guid[] { }, "Variant");
+            _binSizePin.SetSubType(-1, double.MaxValue, 1, attr.BinSize, false, false, true);
+            _pin.Order = attr.Order;
+            _binSizePin.Order = attr.BinOrder;
         }
     }
 }

@@ -34,6 +34,10 @@ namespace VVVV.Nodes.PDDN
             return null;
         }
     }
+    /// <summary>
+    /// Constructor node where output is persistent until another construct
+    /// </summary>
+    /// <typeparam name="T">Type of desired object</typeparam>
     public abstract class ConstructorNode<T> : IPluginEvaluate
     {
         [Input("Construct", IsBang = true, Order = 0)]
@@ -83,6 +87,10 @@ namespace VVVV.Nodes.PDDN
             }
         }
     }
+    /// <summary>
+    /// Constructor node where output is persistent until another construct, it can also update object with incoming data
+    /// </summary>
+    /// <typeparam name="T">Type of desired object</typeparam>
     public abstract class ConstructAndSetNode<T> : IPluginEvaluate
     {
         [Input("Construct", IsBang = true, Order = 0)]
@@ -153,6 +161,10 @@ namespace VVVV.Nodes.PDDN
         }
     }
 
+    /// <summary>
+    /// Generic version of expand node. Hence much quicker and output data can be transformed
+    /// </summary>
+    /// <typeparam name="T">Type of desired object</typeparam>
     public abstract class ObjectSplitNode<T> : IPartImportsSatisfiedNotification, IPluginEvaluate
     {
         [Input("Input")] public Pin<T> FInput;
@@ -170,11 +182,24 @@ namespace VVVV.Nodes.PDDN
         public virtual void OnChangedBegin() { }
         public virtual void OnChangedEnd() { }
 
+        /// <summary>
+        /// Transform a field or a property to a different value
+        /// </summary>
+        /// <param name="obj">Original value of the field / property</param>
+        /// <param name="member">Field / Property info</param>
+        /// <param name="i">Current slice</param>
+        /// <returns>The resulting transformed object</returns>
         public virtual object TransformOutput(object obj, MemberInfo member, int i)
         {
             return obj;
         }
 
+        /// <summary>
+        /// Transform the type of a field or a property to a different one
+        /// </summary>
+        /// <param name="original">Original type of the field / property</param>
+        /// <param name="member">Field / Property info</param>
+        /// <returns>The resulting transformed type</returns>
         public virtual Type TransformType(Type original, MemberInfo member)
         {
             return original;

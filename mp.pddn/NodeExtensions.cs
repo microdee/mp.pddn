@@ -11,7 +11,14 @@ namespace VVVV.Nodes.PDDN
 {
     public static class NodeExtensions
     {
-        public static void SetSliceCountForAllOutput(this IPluginEvaluate node, int sc, string[] ignore = null)
+        /// <summary>
+        /// Convenience function to set the slicecount of all output pins at once
+        /// </summary>
+        /// <param name="node">Current node</param>
+        /// <param name="sc">Slicecount</param>
+        /// <param name="ignore">Ignore pins via their Member names (NOT pin names!)</param>
+        /// <param name="pinSet">Optional hashset to save the list of spreads to</param>
+        public static void SetSliceCountForAllOutput(this IPluginEvaluate node, int sc, string[] ignore = null, HashSet<NGISpread> pinSet = null)
         {
             foreach (var field in node.GetType().GetFields())
             {
@@ -20,7 +27,38 @@ namespace VVVV.Nodes.PDDN
                 if (field.GetCustomAttributes(typeof(OutputAttribute), false).Length == 0) continue;
                 var spread = (NGISpread)field.GetValue(node);
                 spread.SliceCount = sc;
+                if (pinSet == null) continue;
+                if (!pinSet.Contains(spread)) pinSet.Add(spread);
             }
+        }
+        /// <summary>
+        /// Converts IIOcontainer to an actual spread
+        /// </summary>
+        /// <param name="pin"></param>
+        /// <returns>the spread</returns>
+        public static NGISpread ToISpread(this IIOContainer pin)
+        {
+            return (NGISpread)(pin.RawIOObject);
+        }
+
+        /// <summary>
+        /// Converts IIOcontainer to an actual Diffspread
+        /// </summary>
+        /// <param name="pin"></param>
+        /// <returns>the spread</returns>
+        public static NGIDiffSpread ToIDiffSpread(this IIOContainer pin)
+        {
+            return (NGIDiffSpread)(pin.RawIOObject);
+        }
+
+        /// <summary>
+        /// Converts IIOcontainer to an actual generic spread
+        /// </summary>
+        /// <param name="pin"></param>
+        /// <returns>the spread</returns>
+        public static ISpread<T> ToGenericISpread<T>(this IIOContainer pin)
+        {
+            return (ISpread<T>)(pin.RawIOObject);
         }
     }
 }
