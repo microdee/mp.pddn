@@ -206,6 +206,7 @@ namespace VVVV.Nodes.PDDN
         }
 
         protected Dictionary<MemberInfo, bool> IsMemberEnumerable = new Dictionary<MemberInfo, bool>();
+        protected Dictionary<MemberInfo, bool> IsMemberDictionary = new Dictionary<MemberInfo, bool>();
 
         protected Type CType;
         protected PinDictionary Pd;
@@ -231,7 +232,39 @@ namespace VVVV.Nodes.PDDN
                     break;
             }
             var enumerable = false;
-            if ((memberType.GetInterface("IEnumerable") != null) && (memberType != typeof(string)))
+            var dictionary = false;
+            if (memberType.GetInterface("IDictionary") != null)
+            {
+                try
+                {
+                    var interfaces = memberType.GetInterfaces().ToList();
+                    interfaces.Add(memberType);
+                    var stype = interfaces
+                        .Where(type =>
+                        {
+                            try
+                            {
+                                var res = type.GetGenericTypeDefinition();
+                                if (res == null) return false;
+                                return res == typeof(IDictionary<,>);
+                            }
+                            catch (Exception)
+                            {
+                                return false;
+                            }
+                        })
+                        .First().GenericTypeArguments;
+                    Pd.AddOutputBinSized(TransformType(stype[0], member), new OutputAttribute(member.Name + " Keys"));
+                    Pd.AddOutputBinSized(TransformType(stype[1], member), new OutputAttribute(member.Name + " Values"));
+                    dictionary = true;
+                }
+                catch (Exception)
+                {
+                    Pd.AddOutput(TransformType(memberType, member), new OutputAttribute(member.Name));
+                    dictionary = false;
+                }
+            }
+            else if ((memberType.GetInterface("IEnumerable") != null) && (memberType != typeof(string)))
             {
                 try
                 {
@@ -267,6 +300,7 @@ namespace VVVV.Nodes.PDDN
                 enumerable = false;
             }
             IsMemberEnumerable.Add(member, enumerable);
+            IsMemberDictionary.Add(member, dictionary);
         }
 
         private void AssignMemberValue(MemberInfo member, object input, int i)
@@ -282,7 +316,24 @@ namespace VVVV.Nodes.PDDN
                     memberValue = prop.GetValue(input);
                     break;
             }
-            if (IsMemberEnumerable[member])
+            if (IsMemberDictionary[member])
+            {
+                var dict = (IDictionary)memberValue;
+                var keyspread = (ISpread)Pd.OutputPins[member.Name + " Keys"].Spread[i];
+                var valuespread = (ISpread)Pd.OutputPins[member.Name + " Values"].Spread[i];
+                keyspread.SliceCount = valuespread.SliceCount = 0;
+                foreach (var k in dict.Keys)
+                {
+                    keyspread.SliceCount++;
+                    keyspread[-1] = TransformOutput(k, member, i);
+                }
+                foreach (var v in dict.Values)
+                {
+                    valuespread.SliceCount++;
+                    valuespread[-1] = TransformOutput(v, member, i);
+                }
+            }
+            else if (IsMemberEnumerable[member])
             {
                 var enumerable = (IEnumerable)memberValue;
                 var spread = (ISpread)Pd.OutputPins[member.Name].Spread[i];
