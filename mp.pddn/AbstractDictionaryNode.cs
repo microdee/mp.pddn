@@ -24,6 +24,8 @@ namespace mp.pddn
         public ISpread<TVal> FVal;
         [Input("Update or Add", IsBang = true)]
         public ISpread<bool> FSet;
+        [Input("Remove or Add", IsBang = true)]
+        public ISpread<bool> FRemoveAdd;
         [Input("Remove Key")]
         public ISpread<TKey> FRemoveKey;
         [Input("Remove", IsBang = true)]
@@ -72,6 +74,20 @@ namespace mp.pddn
 
                         if (dict.ContainsKey(FMod[i]))
                             dict[FMod[i]] = FVal[i];
+                        else dict.Add(FMod[i], FVal[i]);
+                    }
+                }
+            }
+            if (FRemoveAdd.IsChanged)
+            {
+                if (FVal.SliceCount != 0 && FMod.SliceCount != 0)
+                {
+                    for (int i = 0; i < FMod.SliceCount; i++)
+                    {
+                        if (!FRemoveAdd[i]) continue;
+
+                        if (dict.ContainsKey(FMod[i]))
+                            dict.Remove(FMod[i]);
                         else dict.Add(FMod[i], FVal[i]);
                     }
                 }
