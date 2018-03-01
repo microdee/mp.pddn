@@ -30,11 +30,15 @@ namespace mp.pddn
         public ISpread<bool> FRemove;
         [Input("Clear", IsBang = true)]
         public ISpread<bool> FClear;
+        [Input("Get Value Of")]
+        public ISpread<TKey> FGetKey;
 
         [Output("Keys Out")]
         public ISpread<TKey> FKeysOut;
         [Output("Values")]
         public ISpread<TVal> FOut;
+        [Output("Queried Values")]
+        public ISpread<ISpread<TVal>> FQueryOut;
 
         private Dictionary<TKey, TVal> dict = new Dictionary<TKey, TVal>();
 
@@ -92,6 +96,24 @@ namespace mp.pddn
                 FOut[ii] = kvp.Value;
                 FKeysOut[ii] = kvp.Key;
                 ii++;
+            }
+
+            FQueryOut.SliceCount = FGetKey.SliceCount;
+            for (int i = 0; i < FGetKey.SliceCount; i++)
+            {
+                if (FGetKey[i] == null)
+                {
+                    FQueryOut[i].SliceCount = 0;
+                    continue;
+                }
+                if (!dict.ContainsKey(FGetKey[i]))
+                {
+                    FQueryOut[i].SliceCount = 0;
+                    continue;
+                }
+
+                FQueryOut[i].SliceCount = 1;
+                FQueryOut[i][0] = dict[FGetKey[i]];
             }
         }
     }
