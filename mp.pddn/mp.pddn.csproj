@@ -66,6 +66,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AbstractDictionaryNode.cs" />
     <Compile Include="CommonAbstractNodePatterns.cs" />
     <Compile Include="ConfigurableDynamicPinNode.cs" />
     <Compile Include="NodeExtensions.cs" />
