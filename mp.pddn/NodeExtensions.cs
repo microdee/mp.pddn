@@ -12,7 +12,7 @@ namespace VVVV.Nodes.PDDN
     public static class NodeExtensions
     {
         /// <summary>
-        /// Convenience function to set the slicecount of all output pins at once
+        /// Convenience function to set the slicecount of all output pins at once defined in the plugin class
         /// </summary>
         /// <param name="node">Current node</param>
         /// <param name="sc">Slicecount</param>
@@ -31,6 +31,25 @@ namespace VVVV.Nodes.PDDN
                 if (!pinSet.Contains(spread)) pinSet.Add(spread);
             }
         }
+
+        /// <summary>
+        /// Convenience function to get all the output pins defined in the plugin class
+        /// </summary>
+        /// <param name="node">Current node</param>
+        /// <param name="pinSet">Hashset to save the list of spreads to</param>
+        /// <param name="ignore">Ignore pins via their Member names (NOT pin names!)</param>
+        public static void GetAllOutputSpreads(this IPluginEvaluate node, HashSet<NGISpread> pinSet, string[] ignore = null)
+        {
+            foreach (var field in node.GetType().GetFields())
+            {
+                if (ignore != null)
+                    if (ignore.Contains(field.Name)) continue;
+                if (field.GetCustomAttributes(typeof(OutputAttribute), false).Length == 0) continue;
+                var spread = (NGISpread)field.GetValue(node);
+                if (!pinSet.Contains(spread)) pinSet.Add(spread);
+            }
+        }
+
         /// <summary>
         /// Converts IIOcontainer to an actual spread
         /// </summary>
