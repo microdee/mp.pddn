@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using VVVV.PluginInterfaces.V2;
 
-namespace VVVV.Nodes.PDDN
+namespace mp.pddn
 {
     /// <summary>
     /// Abstract class evading bugs with single config pin, dynamic pins nodes

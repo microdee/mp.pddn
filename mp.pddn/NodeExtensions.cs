@@ -7,7 +7,7 @@ using VVVV.PluginInterfaces.V2;
 using NGISpread = VVVV.PluginInterfaces.V2.NonGeneric.ISpread;
 using NGIDiffSpread = VVVV.PluginInterfaces.V2.NonGeneric.IDiffSpread;
 
-namespace VVVV.Nodes.PDDN
+namespace mp.pddn
 {
     public static class NodeExtensions
     {

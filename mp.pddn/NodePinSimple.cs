@@ -7,7 +7,7 @@ using VVVV.PluginInterfaces.V1;
 using VVVV.Utils.VColor;
 using VVVV.Utils.Win32;
 
-namespace VVVV.Nodes.PDDN
+namespace mp.pddn
 {
     /// <summary>
     /// An easy to use input which accepts anything

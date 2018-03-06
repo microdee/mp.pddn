@@ -7,7 +7,7 @@ using VVVV.Utils.IO;
 using NGISpread = VVVV.PluginInterfaces.V2.NonGeneric.ISpread;
 using NGIDiffSpread = VVVV.PluginInterfaces.V2.NonGeneric.IDiffSpread;
 
-namespace VVVV.Nodes.PDDN
+namespace mp.pddn
 {
     /// <summary>
     /// An abstract pin wrapper containing all types a pin is operating with

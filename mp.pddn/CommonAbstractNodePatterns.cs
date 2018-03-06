@@ -10,7 +10,7 @@ using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.Reflection;
 
-namespace VVVV.Nodes.PDDN
+namespace mp.pddn
 {
     public static class ObjectHelper
     {
