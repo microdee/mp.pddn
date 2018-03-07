@@ -50,6 +50,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition.CodePlex">
       <HintPath>dlls\System.ComponentModel.Composition.CodePlex.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System.Core" />
     <Reference Include="System.Interactive, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
@@ -82,24 +83,31 @@
     <Reference Include="System.Xml" />
     <Reference Include="VVVV.Core">
       <HintPath>dlls\VVVV.Core.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Hosting">
       <HintPath>dlls\VVVV.Hosting.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Nodes.Generic">
       <HintPath>dlls\VVVV.Nodes.Generic.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.PluginInterfaces">
       <HintPath>dlls\VVVV.PluginInterfaces.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Utils">
       <HintPath>dlls\VVVV.Utils.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Utils3rdParty">
       <HintPath>dlls\VVVV.Utils3rdParty.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.UtilsIL">
       <HintPath>dlls\VVVV.UtilsIL.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
