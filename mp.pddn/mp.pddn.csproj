@@ -9,10 +9,11 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>mp.pddn</RootNamespace>
     <AssemblyName>mp.pddn</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -32,8 +33,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="md.stdl, Version=0.1.38.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\md-stdl.0.1.38-beta\lib\net461\md.stdl.dll</HintPath>
+    <Reference Include="md.stdl, Version=0.1.43.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\md-stdl.0.1.43-beta\lib\net47\md.stdl.dll</HintPath>
     </Reference>
     <Reference Include="SevenZip, Version=9.20.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\LZMA-SDK.9.20\lib\net20\SevenZip.dll</HintPath>
