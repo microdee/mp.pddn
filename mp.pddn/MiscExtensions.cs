@@ -14,7 +14,7 @@ namespace mp.pddn
 {
     public static class MiscExtensions
     {
-        public static Type MapSystemNumericsTypeToVVVV(Type original)
+        public static Type MapSystemNumericsTypeToVVVV(Type original, bool stopwatchToSeconds = true)
         {
             if (original == typeof(Vector2))
             {
@@ -36,10 +36,14 @@ namespace mp.pddn
             {
                 return typeof(VMatrix);
             }
+            if (original == typeof(Stopwatch) && stopwatchToSeconds)
+            {
+                return typeof(double);
+            }
             return original;
         }
 
-        public static object MapSystemNumericsValueToVVVV(object obj)
+        public static object MapSystemNumericsValueToVVVV(object obj, bool stopwatchToSeconds = true)
         {
             switch (obj)
             {
@@ -65,7 +69,8 @@ namespace mp.pddn
                 }
                 case Stopwatch s:
                 {
-                    return s.Elapsed.TotalSeconds;
+                    if (stopwatchToSeconds) return s.Elapsed.TotalSeconds;
+                    else return s;
                 }
                 default:
                 {
