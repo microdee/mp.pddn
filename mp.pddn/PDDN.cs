@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.IO;
@@ -15,6 +16,7 @@ namespace mp.pddn
     public abstract class SimplePin
     {
         public object CustomData;
+        public bool BinSized = false;
         public Type Type;
         public IOAttribute Attributes;
         public IIOContainer IOContainer;
@@ -32,6 +34,19 @@ namespace mp.pddn
             IOContainer = ioc;
             Spread = spread;
         }
+
+        public T GetSlice<T>(int i, T fallback)
+        {
+            if (Spread[i] is T res)
+                return res;
+            else return fallback;
+        }
+
+        public object this[int i]
+        {
+            get => Spread[i];
+            set => Spread[i] = value;
+        }
     }
 
     /// <summary>
@@ -45,6 +60,19 @@ namespace mp.pddn
             Attributes = attr;
             IOContainer = ioc;
             Spread = spread;
+        }
+
+        public T GetSlice<T>(int i, T fallback)
+        {
+            if (Spread[i] is T res)
+                return res;
+            else return fallback;
+        }
+
+        public object this[int i]
+        {
+            get => Spread[i];
+            set => Spread[i] = value;
         }
     }
 
@@ -61,11 +89,28 @@ namespace mp.pddn
         }
 
         public Dictionary<string, DiffSpreadPin> InputPins = new Dictionary<string, DiffSpreadPin>();
+        public Dictionary<string, DiffSpreadPin> ConfigPins = new Dictionary<string, DiffSpreadPin>();
         public Dictionary<string, SpreadPin> OutputPins = new Dictionary<string, SpreadPin>();
+        public List<string> ConfigTaggedForRemove = new List<string>();
         public List<string> InputTaggedForRemove = new List<string>();
         public List<string> OutputTaggedForRemove = new List<string>();
+        public bool ExchangingConfig = false;
         public bool ExchangingInput = false;
         public bool ExchangingOutput = false;
+
+        public void BeginConfigExchange()
+        {
+            if (ExchangingConfig) return;
+            ExchangingConfig = true;
+            ConfigTaggedForRemove = ConfigPins.Keys.ToList();
+        }
+
+        public void EndConfigExchange()
+        {
+            if (!ExchangingConfig) return;
+            ExchangingConfig = false;
+            RemoveTaggedConfig();
+        }
 
         public void BeginInputExchange()
         {
@@ -95,6 +140,45 @@ namespace mp.pddn
             RemoveTaggedOutput();
         }
 
+        public void AddConfig(Type T, ConfigAttribute attr)
+        {
+            if (ExchangingConfig && ConfigTaggedForRemove.Contains(attr.Name))
+                ConfigTaggedForRemove.Remove(attr.Name);
+
+            if (ConfigPins.ContainsKey(attr.Name) && ConfigPins[attr.Name].Type != T)
+            {
+                RemoveConfig(attr.Name);
+            }
+            if (!ConfigPins.ContainsKey(attr.Name))
+            {
+                var pinType = typeof(IDiffSpread<>).MakeGenericType(T);
+                var ioc = FIOFactory.CreateIOContainer(pinType, attr);
+                var ispread = ioc.ToIDiffSpread();
+                var pin = new DiffSpreadPin(ispread, attr, ioc) {Type = T};
+                ConfigPins.Add(attr.Name, pin);
+            }
+        }
+        public void AddConfig(Type T, ConfigAttribute attr, object obj)
+        {
+            AddConfig(T, attr);
+            ConfigPins[attr.Name].CustomData = obj;
+        }
+        public void ChangeConfigType(string name, Type T)
+        {
+            if (!ConfigPins.ContainsKey(name)) return;
+            var pin = ConfigPins[name];
+            pin.IOContainer.Dispose();
+            var attr = pin.Attributes;
+
+            var pinType = typeof(IDiffSpread<>).MakeGenericType(T);
+
+            var ioc = FIOFactory.CreateIOContainer(pinType, attr);
+            var ispread = ioc.ToIDiffSpread();
+            pin.IOContainer = ioc;
+            pin.Spread = ispread;
+            pin.Type = T;
+        }
+
         public void AddInput(Type T, InputAttribute attr)
         {
             if (ExchangingInput && InputTaggedForRemove.Contains(attr.Name))
@@ -109,9 +193,8 @@ namespace mp.pddn
                 var pinType = typeof (IDiffSpread<>).MakeGenericType(T);
                 var ioc = FIOFactory.CreateIOContainer(pinType, attr);
                 var ispread = ioc.ToIDiffSpread();
-                var pin = new DiffSpreadPin(ispread, attr, ioc);
+                var pin = new DiffSpreadPin(ispread, attr, ioc) {Type = T};
                 InputPins.Add(attr.Name, pin);
-                pin.Type = T;
             }
         }
         public void AddInput(Type T, InputAttribute attr, object obj)
@@ -133,9 +216,12 @@ namespace mp.pddn
                 var pinType = typeof (IDiffSpread<>).MakeGenericType(typeof (ISpread<>).MakeGenericType(T));
                 var ioc = FIOFactory.CreateIOContainer(pinType, attr);
                 var ispread = ioc.ToIDiffSpread();
-                var pin = new DiffSpreadPin(ispread, attr, ioc);
+                var pin = new DiffSpreadPin(ispread, attr, ioc)
+                {
+                    Type = T,
+                    BinSized = true
+                };
                 InputPins.Add(attr.Name, pin);
-                pin.Type = T;
             }
         }
         public void AddInputBinSized(Type T, InputAttribute attr, object obj)
@@ -143,7 +229,14 @@ namespace mp.pddn
             AddInputBinSized(T, attr);
             InputPins[attr.Name].CustomData = obj;
         }
-        public void ChangeInputType(string name, Type T, bool BinSizable = false)
+
+        public void ChangeInputType(string name, Type T)
+        {
+            if (!InputPins.ContainsKey(name)) return;
+            var pin = InputPins[name];
+            ChangeInputType(name, T, pin.BinSized);
+        }
+        public void ChangeInputType(string name, Type T, bool binSizable)
         {
             if (!InputPins.ContainsKey(name)) return;
             var pin = InputPins[name];
@@ -151,7 +244,7 @@ namespace mp.pddn
             var attr = pin.Attributes;
 
             Type pinType;
-            if (BinSizable)
+            if (binSizable)
                 pinType = typeof(IDiffSpread<>).MakeGenericType(typeof(ISpread<>).MakeGenericType(T));
             else
                 pinType = typeof(IDiffSpread<>).MakeGenericType(T);
@@ -161,6 +254,7 @@ namespace mp.pddn
             pin.IOContainer = ioc;
             pin.Spread = ispread;
             pin.Type = T;
+            pin.BinSized = binSizable;
         }
         public void AddOutput(Type T, OutputAttribute attr)
         {
@@ -176,9 +270,8 @@ namespace mp.pddn
                 var pinType = typeof (ISpread<>).MakeGenericType(T);
                 var ioc = FIOFactory.CreateIOContainer(pinType, attr);
                 var ispread = ioc.ToISpread();
-                var pin = new SpreadPin(ispread, attr, ioc);
+                var pin = new SpreadPin(ispread, attr, ioc) {Type = T};
                 OutputPins.Add(attr.Name, pin);
-                pin.Type = T;
             }
         }
         public void AddOutput(Type T, OutputAttribute attr, object obj)
@@ -200,9 +293,12 @@ namespace mp.pddn
                 var pinType = typeof (ISpread<>).MakeGenericType(typeof (ISpread<>).MakeGenericType(T));
                 var ioc = FIOFactory.CreateIOContainer(pinType, attr);
                 var ispread = ioc.ToISpread();
-                var pin = new SpreadPin(ispread, attr, ioc);
+                var pin = new SpreadPin(ispread, attr, ioc)
+                {
+                    Type = T,
+                    BinSized = true
+                };
                 OutputPins.Add(attr.Name, pin);
-                pin.Type = T;
             }
         }
         public void AddOutputBinSized(Type T, OutputAttribute attr, object obj)
@@ -210,7 +306,13 @@ namespace mp.pddn
             AddOutputBinSized(T, attr);
             OutputPins[attr.Name].CustomData = obj;
         }
-        public void ChangeOutputType(string name, Type T, bool BinSizable = false)
+        public void ChangeOutputType(string name, Type T)
+        {
+            if (!OutputPins.ContainsKey(name)) return;
+            var pin = OutputPins[name];
+            ChangeOutputType(name, T, pin.BinSized);
+        }
+        public void ChangeOutputType(string name, Type T, bool binSizable)
         {
             if (!OutputPins.ContainsKey(name)) return;
             var pin = OutputPins[name];
@@ -218,7 +320,7 @@ namespace mp.pddn
             var attr = pin.Attributes;
 
             Type pinType;
-            if (BinSizable)
+            if (binSizable)
                 pinType = typeof(ISpread<>).MakeGenericType(typeof(ISpread<>).MakeGenericType(T));
             else
                 pinType = typeof(ISpread<>).MakeGenericType(T);
@@ -228,7 +330,31 @@ namespace mp.pddn
             pin.IOContainer = ioc;
             pin.Spread = ispread;
             pin.Type = T;
+            pin.BinSized = true;
         }
+
+        public void RemoveConfig(string name)
+        {
+            if (!ConfigPins.ContainsKey(name)) return;
+            ConfigPins[name].IOContainer.Dispose();
+            ConfigPins.Remove(name);
+        }
+        public void RemoveTaggedConfig()
+        {
+            foreach (var k in ConfigTaggedForRemove)
+            {
+                RemoveConfig(k);
+            }
+        }
+        public void RemoveAllConfig()
+        {
+            foreach (var p in ConfigPins.Keys)
+            {
+                ConfigPins[p].IOContainer.Dispose();
+            }
+            ConfigPins.Clear();
+        }
+
         public void RemoveInput(string name)
         {
             if (!InputPins.ContainsKey(name)) return;
