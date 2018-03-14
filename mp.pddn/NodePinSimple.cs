@@ -14,7 +14,17 @@ namespace mp.pddn
     /// </summary>
     public class GenericInput
     {
+        public class ConnectionEventArgs : EventArgs
+        {
+            public bool Connected;
+
+            public ConnectionEventArgs(bool connected)
+            {
+                Connected = connected;
+            }
+        }
         private INodeIn _pin;
+        private bool _prevConnected;
 
         public INodeIn Pin
         {
@@ -80,12 +90,25 @@ namespace mp.pddn
             return usi;
         }
 
-        public GenericInput(IPluginHost plgh, IOAttribute attr)
+        public GenericInput(IPluginHost plgh, IOAttribute attr, IMainLoop mainloop = null)
         {
             plgh.CreateNodeInput(attr.Name, (TSliceMode)attr.SliceMode, (TPinVisibility)attr.Visibility, out _pin);
             _pin.SetSubType2(null, new Guid[] { }, "Variant");
             _pin.Order = attr.Order;
+
+            if(mainloop == null) return;
+            mainloop.OnUpdateView += (sender, args) =>
+            {
+                var currconn = Connected;
+                if (currconn != _prevConnected)
+                {
+                    OnConnectionChange?.Invoke(this, new ConnectionEventArgs(currconn));
+                }
+                _prevConnected = currconn;
+            };
         }
+
+        public event EventHandler<ConnectionEventArgs> OnConnectionChange;
     }
 
     /// <summary>
@@ -95,6 +118,7 @@ namespace mp.pddn
     {
         private INodeIn _pin;
         private IValueIn _binSizePin;
+        private bool _prevConnected;
 
         public INodeIn Pin
         {
@@ -242,7 +266,7 @@ namespace mp.pddn
             return usi;
         }
 
-        public GenericBinSizedInput(IPluginHost plgh, InputAttribute attr)
+        public GenericBinSizedInput(IPluginHost plgh, InputAttribute attr, IMainLoop mainloop = null)
         {
             plgh.CreateNodeInput(attr.Name, (TSliceMode)attr.SliceMode, (TPinVisibility)attr.Visibility, out _pin);
             plgh.CreateValueInput(attr.Name + " Bin Size", 1, null, TSliceMode.Dynamic, (TPinVisibility) attr.Visibility, out _binSizePin);
@@ -250,6 +274,19 @@ namespace mp.pddn
             _binSizePin.SetSubType(-1, double.MaxValue, 1, attr.BinSize, false, false, true);
             _pin.Order = attr.Order;
             _binSizePin.Order = attr.BinOrder;
+
+            if (mainloop == null) return;
+            mainloop.OnUpdateView += (sender, args) =>
+            {
+                var currconn = Connected;
+                if (currconn != _prevConnected)
+                {
+                    OnConnectionChange?.Invoke(this, new GenericInput.ConnectionEventArgs(currconn));
+                }
+                _prevConnected = currconn;
+            };
         }
+
+        public event EventHandler<GenericInput.ConnectionEventArgs> OnConnectionChange;
     }
 }
