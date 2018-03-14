@@ -10,6 +10,11 @@ using VVVV.Utils.VMath;
 
 namespace mp.pddn
 {
+    public class TypeIsNullException : Exception
+    {
+        public override string Message => "Pingroup type is not set yet properly";
+    }
+
     public class ConfigurableTypePinGroup : IDisposable
     {
         public PinDictionary Pd { get; }
@@ -40,12 +45,13 @@ namespace mp.pddn
             {"vector4", typeof(Vector4D) },
             {"matrix4x4", typeof(Matrix4x4) },
             {"transform", typeof(Matrix4x4) },
-            {"color", typeof(RGBAColor) },
-            {"vcolor", typeof(VColor) }
+            {"color", typeof(RGBAColor) }
         };
 
         public void AddInput(params InputAttribute[] attrs)
         {
+            if(GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
@@ -54,6 +60,8 @@ namespace mp.pddn
         }
         public void AddInput(params (InputAttribute attr, object auxobj)[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
@@ -63,6 +71,8 @@ namespace mp.pddn
 
         public void AddInputBinSized(params InputAttribute[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
@@ -72,6 +82,8 @@ namespace mp.pddn
         }
         public void AddInputBinSized(params (InputAttribute attr, object auxobj)[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
@@ -82,6 +94,8 @@ namespace mp.pddn
 
         public void AddOutput(params OutputAttribute[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
@@ -90,6 +104,8 @@ namespace mp.pddn
         }
         public void AddOutput(params (OutputAttribute attr, object auxobj)[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
@@ -99,6 +115,8 @@ namespace mp.pddn
 
         public void AddOutputBinSized(params OutputAttribute[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
@@ -108,6 +126,8 @@ namespace mp.pddn
         }
         public void AddOutputBinSized(params (OutputAttribute attr, object auxobj)[] attrs)
         {
+            if (GroupType == null) throw new TypeIsNullException();
+
             foreach (var attr in attrs)
             {
                 attr.attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
