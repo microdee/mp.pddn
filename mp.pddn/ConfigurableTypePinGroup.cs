@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using md.stdl.Coding;
 using VVVV.PluginInterfaces.V2;
+using VVVV.Utils.Reflection;
 using VVVV.Utils.VColor;
 using VVVV.Utils.VMath;
 
@@ -17,11 +18,14 @@ namespace mp.pddn
 
     public class ConfigurableTypePinGroup : IDisposable
     {
+        private Type[] _typeInheritance;
+        private string _inheritanceEnumName;
+
         public PinDictionary Pd { get; }
         public IDiffSpread<string> TypeConfigPin { get; }
 
         public GenericInput RefTypePin { get; }
-        public ISpread<int> TypeInheritenceLevelPin { get; }
+        public ISpread<EnumEntry> TypeInheritenceLevelPin { get; }
         public IDiffSpread<bool> LearnTypeBangPin { get; }
 
         public Type GroupType { get; private set; }
@@ -54,7 +58,7 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
+                attr.Order = StartOrder + attr.Order + Pd.InputPins.Count * 2 + 3;
                 Pd.AddInput(GroupType, attr);
             }
         }
@@ -64,7 +68,7 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
+                attr.attr.Order = StartOrder + attr.attr.Order + Pd.InputPins.Count * 2 + 3;
                 Pd.AddInput(GroupType, attr.attr, attr.auxobj);
             }
         }
@@ -75,8 +79,8 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
-                attr.BinOrder = StartOrder + Pd.InputPins.Count * 2 + 4;
+                attr.Order = StartOrder + attr.Order + Pd.InputPins.Count * 2 + 3;
+                attr.BinOrder = StartOrder + attr.BinOrder + Pd.InputPins.Count * 2 + 4;
                 Pd.AddInputBinSized(GroupType, attr);
             }
         }
@@ -86,8 +90,8 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.attr.Order = StartOrder + Pd.InputPins.Count * 2 + 3;
-                attr.attr.BinOrder = StartOrder + Pd.InputPins.Count * 2 + 4;
+                attr.attr.Order = StartOrder + attr.attr.Order + Pd.InputPins.Count * 2 + 3;
+                attr.attr.BinOrder = StartOrder + attr.attr.BinOrder + Pd.InputPins.Count * 2 + 4;
                 Pd.AddInputBinSized(GroupType, attr.attr, attr.auxobj);
             }
         }
@@ -98,7 +102,7 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
+                attr.Order = StartOrder + attr.Order + Pd.OutputPins.Count * 2 + 3;
                 Pd.AddOutput(GroupType, attr);
             }
         }
@@ -108,7 +112,7 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
+                attr.attr.Order = StartOrder + attr.attr.Order + Pd.OutputPins.Count * 2 + 3;
                 Pd.AddOutput(GroupType, attr.attr, attr.auxobj);
             }
         }
@@ -119,8 +123,8 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
-                attr.BinOrder = StartOrder + Pd.OutputPins.Count * 2 + 4;
+                attr.Order = StartOrder + attr.Order + Pd.OutputPins.Count * 2 + 3;
+                attr.BinOrder = StartOrder + attr.BinOrder + Pd.OutputPins.Count * 2 + 4;
                 Pd.AddOutputBinSized(GroupType, attr);
             }
         }
@@ -130,8 +134,8 @@ namespace mp.pddn
 
             foreach (var attr in attrs)
             {
-                attr.attr.Order = StartOrder + Pd.OutputPins.Count * 2 + 3;
-                attr.attr.BinOrder = StartOrder + Pd.OutputPins.Count * 2 + 4;
+                attr.attr.Order = StartOrder + attr.attr.Order + Pd.OutputPins.Count * 2 + 3;
+                attr.attr.BinOrder = StartOrder + attr.attr.BinOrder + Pd.OutputPins.Count * 2 + 4;
                 Pd.AddOutputBinSized(GroupType, attr.attr, attr.auxobj);
             }
         }
@@ -156,10 +160,14 @@ namespace mp.pddn
             return Pd.OutputPins.ContainsKey(name) ? Pd.OutputPins[name].GetSlice(i, fallback) : fallback;
         }
 
-        public ConfigurableTypePinGroup(IPluginHost2 plgh, IIOFactory iofact, string groupname, int startOrder = 0, bool hideTypeLearn = false)
+        public ConfigurableTypePinGroup(IPluginHost2 plgh, IIOFactory iofact, IMainLoop ml, string groupname, int startOrder = 0, bool hideTypeLearn = false)
         {
             Pd = new PinDictionary(iofact);
             StartOrder = startOrder;
+            _inheritanceEnumName = $"{plgh.GetNodePath(false)}/{groupname}.TypeInheritance";
+            
+            EnumManager.UpdateEnum(_inheritanceEnumName, "TopLevel", new[] { "TopLevel" });
+
             TypeConfigPin = iofact.CreateDiffSpread<string>(new ConfigAttribute(groupname + " Type")
             {
                 Order = startOrder,
@@ -169,11 +177,12 @@ namespace mp.pddn
             {
                 Order = startOrder,
                 Visibility = hideTypeLearn ? PinVisibility.OnlyInspector : PinVisibility.True
-            });
-            TypeInheritenceLevelPin = iofact.CreateSpread<int>(new InputAttribute($"Learn {groupname} Type Inheritence Level")
+            }, ml);
+            TypeInheritenceLevelPin = iofact.CreateSpread<EnumEntry>(new InputAttribute($"Learn {groupname} Type Inheritence Level")
             {
                 Order = startOrder + 1,
-                DefaultValue = 0,
+                EnumName = _inheritanceEnumName,
+                DefaultEnumEntry = "TopLevel",
                 Visibility = hideTypeLearn ? PinVisibility.OnlyInspector : PinVisibility.Hidden
             });
             LearnTypeBangPin = iofact.CreateDiffSpread<bool>(new InputAttribute($"Learn {groupname} Type")
@@ -182,6 +191,38 @@ namespace mp.pddn
                 IsBang = true,
                 Visibility = hideTypeLearn ? PinVisibility.OnlyInspector : PinVisibility.True
             });
+
+            RefTypePin.OnConnectionChange += (sender, args) =>
+            {
+                if (args.Connected)
+                {
+                    _typeInheritance = RefTypePin[0].GetType().GetTypes().ToArray();
+                    var names = new [] { "TopLevel" }.Concat(_typeInheritance.Select(t => t.GetCSharpName(true))).ToArray();
+                    EnumManager.UpdateEnum(_inheritanceEnumName, names[0], names);
+                }
+                /*
+                else
+                {
+                    var names = new[] { "TopLevel" };
+                    EnumManager.UpdateEnum(_inheritanceEnumName, names[0], names);
+                }
+                */
+            };
+
+            LearnTypeBangPin.Changed += spread =>
+            {
+                if (!LearnTypeBangPin[0]) return;
+                try
+                {
+                    var typesel = Math.Max(TypeInheritenceLevelPin[0].Index - 1, 0);
+                    TypeConfigPin[0] = _typeInheritance[Math.Min(typesel, _typeInheritance.Length - 1)].AssemblyQualifiedName;
+                    TypeConfigPin.Stream.IsChanged = true;
+                }
+                catch (Exception e)
+                { }
+
+                OnTypeLearnt?.Invoke(this, EventArgs.Empty);
+            };
 
             TypeConfigPin.Changed += spread =>
             {
@@ -210,20 +251,6 @@ namespace mp.pddn
                 }
 
                 OnTypeChangeEnd?.Invoke(this, EventArgs.Empty);
-            };
-            LearnTypeBangPin.Changed += spread =>
-            {
-                if (!LearnTypeBangPin[0]) return;
-                try
-                {
-                    var types = RefTypePin[0].GetType().GetTypes().ToArray();
-                    TypeConfigPin[0] = types[Math.Min(TypeInheritenceLevelPin[0], types.Length - 1)].AssemblyQualifiedName;
-                    TypeConfigPin.Stream.IsChanged = true;
-                }
-                catch (Exception e)
-                { }
-
-                OnTypeLearnt?.Invoke(this, EventArgs.Empty);
             };
         }
 
