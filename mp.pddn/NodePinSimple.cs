@@ -86,8 +86,15 @@ namespace mp.pddn
 
         public object GetUpstreamInterface()
         {
-            _pin.GetUpstreamInterface(out object usi);
-            return usi;
+            try
+            {
+                _pin.GetUpstreamInterface(out object usi);
+                return usi;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public GenericInput(IPluginHost plgh, IOAttribute attr, IMainLoop mainloop = null)
@@ -262,8 +269,15 @@ namespace mp.pddn
 
         public object GetUpstreamInterface()
         {
-            _pin.GetUpstreamInterface(out object usi);
-            return usi;
+            try
+            {
+                _pin.GetUpstreamInterface(out object usi);
+                return usi;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public GenericBinSizedInput(IPluginHost plgh, InputAttribute attr, IMainLoop mainloop = null)
