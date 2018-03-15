@@ -254,8 +254,8 @@ namespace mp.pddn
                             }
                         })
                         .First().GenericTypeArguments;
-                    Pd.AddOutputBinSized(TransformType(stype[0], member), new OutputAttribute(member.Name + " Keys"));
-                    Pd.AddOutputBinSized(TransformType(stype[1], member), new OutputAttribute(member.Name + " Values"));
+                    Pd.AddOutput(TransformType(stype[0], member), new OutputAttribute(member.Name + " Keys"), binSized: true);
+                    Pd.AddOutput(TransformType(stype[1], member), new OutputAttribute(member.Name + " Values"), binSized: true);
                     dictionary = true;
                 }
                 catch (Exception)
@@ -285,7 +285,7 @@ namespace mp.pddn
                             }
                         })
                         .First().GenericTypeArguments[0];
-                    Pd.AddOutputBinSized(TransformType(stype, member), new OutputAttribute(member.Name));
+                    Pd.AddOutput(TransformType(stype, member), new OutputAttribute(member.Name), binSized: true);
                     enumerable = true;
                 }
                 catch (Exception)

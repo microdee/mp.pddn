@@ -52,92 +52,56 @@ namespace mp.pddn
             {"color", typeof(RGBAColor) }
         };
 
-        public void AddInput(params InputAttribute[] attrs)
+        public DiffSpreadPin AddInput(params InputAttribute[] attrs)
         {
             if(GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.Order = StartOrder + attr.Order + Pd.InputPins.Count * 2 + 3;
-                Pd.AddInput(GroupType, attr);
-            }
+            return attrs.Select(attr => Pd.AddInput(GroupType, attr)).ToArray()[0];
         }
-        public void AddInput(params (InputAttribute attr, object auxobj)[] attrs)
+        public DiffSpreadPin AddInput(params (InputAttribute attr, object auxobj)[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.attr.Order = StartOrder + attr.attr.Order + Pd.InputPins.Count * 2 + 3;
-                Pd.AddInput(GroupType, attr.attr, attr.auxobj);
-            }
+            return attrs.Select(attr => Pd.AddInput(GroupType, attr.attr, obj: attr.auxobj)).ToArray()[0];
         }
 
-        public void AddInputBinSized(params InputAttribute[] attrs)
+        public DiffSpreadPin AddInputBinSized(params InputAttribute[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.Order = StartOrder + attr.Order + Pd.InputPins.Count * 2 + 3;
-                attr.BinOrder = StartOrder + attr.BinOrder + Pd.InputPins.Count * 2 + 4;
-                Pd.AddInputBinSized(GroupType, attr);
-            }
+            return attrs.Select(attr => Pd.AddInput(GroupType, attr, binSized: true)).ToArray()[0];
         }
-        public void AddInputBinSized(params (InputAttribute attr, object auxobj)[] attrs)
+        public DiffSpreadPin AddInputBinSized(params (InputAttribute attr, object auxobj)[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.attr.Order = StartOrder + attr.attr.Order + Pd.InputPins.Count * 2 + 3;
-                attr.attr.BinOrder = StartOrder + attr.attr.BinOrder + Pd.InputPins.Count * 2 + 4;
-                Pd.AddInputBinSized(GroupType, attr.attr, attr.auxobj);
-            }
+            return attrs.Select(attr => Pd.AddInput(GroupType, attr.attr, binSized: true, obj: attr.auxobj)).ToArray()[0];
         }
 
-        public void AddOutput(params OutputAttribute[] attrs)
+        public SpreadPin AddOutput(params OutputAttribute[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.Order = StartOrder + attr.Order + Pd.OutputPins.Count * 2 + 3;
-                Pd.AddOutput(GroupType, attr);
-            }
+            return attrs.Select(attr => Pd.AddOutput(GroupType, attr)).ToArray()[0];
         }
-        public void AddOutput(params (OutputAttribute attr, object auxobj)[] attrs)
+        public SpreadPin AddOutput(params (OutputAttribute attr, object auxobj)[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.attr.Order = StartOrder + attr.attr.Order + Pd.OutputPins.Count * 2 + 3;
-                Pd.AddOutput(GroupType, attr.attr, attr.auxobj);
-            }
+            return attrs.Select(attr => Pd.AddOutput(GroupType, attr.attr, obj: attr.auxobj)).ToArray()[0];
         }
 
-        public void AddOutputBinSized(params OutputAttribute[] attrs)
+        public SpreadPin AddOutputBinSized(params OutputAttribute[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.Order = StartOrder + attr.Order + Pd.OutputPins.Count * 2 + 3;
-                attr.BinOrder = StartOrder + attr.BinOrder + Pd.OutputPins.Count * 2 + 4;
-                Pd.AddOutputBinSized(GroupType, attr);
-            }
+            return attrs.Select(attr => Pd.AddOutput(GroupType, attr, binSized: true)).ToArray()[0];
         }
-        public void AddOutputBinSized(params (OutputAttribute attr, object auxobj)[] attrs)
+        public SpreadPin AddOutputBinSized(params (OutputAttribute attr, object auxobj)[] attrs)
         {
             if (GroupType == null) throw new TypeIsNullException();
 
-            foreach (var attr in attrs)
-            {
-                attr.attr.Order = StartOrder + attr.attr.Order + Pd.OutputPins.Count * 2 + 3;
-                attr.attr.BinOrder = StartOrder + attr.attr.BinOrder + Pd.OutputPins.Count * 2 + 4;
-                Pd.AddOutputBinSized(GroupType, attr.attr, attr.auxobj);
-            }
+            return attrs.Select(attr => Pd.AddOutput(GroupType, attr.attr, binSized: true, obj: attr.auxobj)).ToArray()[0];
         }
 
         public void RemoveInput(string name) { Pd.RemoveInput(name); }
@@ -200,13 +164,11 @@ namespace mp.pddn
                     var names = new [] { "TopLevel" }.Concat(_typeInheritance.Select(t => t.GetCSharpName(true))).ToArray();
                     EnumManager.UpdateEnum(_inheritanceEnumName, names[0], names);
                 }
-                /*
                 else
                 {
                     var names = new[] { "TopLevel" };
                     EnumManager.UpdateEnum(_inheritanceEnumName, names[0], names);
                 }
-                */
             };
 
             LearnTypeBangPin.Changed += spread =>
