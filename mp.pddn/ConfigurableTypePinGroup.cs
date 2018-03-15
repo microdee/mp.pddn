@@ -42,7 +42,7 @@ namespace mp.pddn
             {"int", typeof(int) },
             {"string", typeof(string) },
             {"vector2d", typeof(Vector2D) },
-            {"vector3d", typeof(Vector3D) },
+            {"vector3d", typeof(Vector3D) },    
             {"vector4d", typeof(Vector4D) },
             {"vector2", typeof(Vector2D) },
             {"vector3", typeof(Vector3D) },

@@ -242,7 +242,7 @@ namespace mp.pddn
 
                     if (!spindict.ContainsKey(attr.Name))
                     {
-                        var pin = (SpreadPin)CreatePin(true);
+                        var pin = (SpreadPin)CreatePin(false);
                         spindict.Add(attr.Name, pin);
                     }
                     break;
@@ -267,7 +267,7 @@ namespace mp.pddn
             if (ExchangingInput && InputTaggedForRemove.Contains(attr.Name))
                 InputTaggedForRemove.Remove(attr.Name);
 
-            AddPin(T, attr, false, obj, InputPins);
+            AddPin(T, attr, binSized, obj, InputPins);
             return InputPins[attr.Name];
         }
 
