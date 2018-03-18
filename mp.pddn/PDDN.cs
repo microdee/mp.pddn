@@ -6,31 +6,38 @@ using System.Runtime.CompilerServices;
 using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.IO;
+using VVVV.Utils.Streams;
 
 namespace mp.pddn
 {
+    public interface ISpreadMeta
+    {
+        object CustomData { get; set; }
+        bool BinSized { get; set; }
+        Type Type { get; set; }
+        IOAttribute Attributes { get; set; }
+    }
     /// <summary>
     /// An abstract pin wrapper containing all types a pin is operating with
     /// </summary>
-    public abstract class SimplePin
+    public interface ISimplePin
     {
-        public object CustomData;
-        public bool BinSized = false;
-        public Type Type;
-        public IOAttribute Attributes;
-        public IIOContainer IOContainer;
+        IIOContainer IOContainer { get; set; }
     }
 
-    /// <summary>
-    /// Simple pin with spread
-    /// </summary>
-    public class SpreadPin : SimplePin
+    public interface IPinWrapper : ISpreadMeta, ISimplePin { }
+
+    public class SpreadWrapper : ISpreadMeta
     {
-        public ISpread Spread;
-        public SpreadPin(ISpread spread, IOAttribute attr, IIOContainer ioc)
+        public object CustomData { get; set; }
+        public bool BinSized { get; set; }
+        public Type Type { get; set; }
+        public IOAttribute Attributes { get; set; }
+        public ISpread Spread { get; set; }
+
+        public SpreadWrapper(ISpread spread, IOAttribute attr)
         {
             Attributes = attr;
-            IOContainer = ioc;
             Spread = spread;
         }
 
@@ -45,33 +52,58 @@ namespace mp.pddn
         {
             get => Spread[i];
             set => Spread[i] = value;
+        }
+    }
+
+    public class DiffSpreadWrapper : ISpreadMeta
+    {
+        public object CustomData { get; set; }
+        public bool BinSized { get; set; }
+        public Type Type { get; set; }
+        public IOAttribute Attributes { get; set; }
+        public IDiffSpread Spread { get; set; }
+
+        public DiffSpreadWrapper(IDiffSpread spread, IOAttribute attr)
+        {
+            Attributes = attr;
+            Spread = spread;
+        }
+
+        public T GetSlice<T>(int i, T fallback)
+        {
+            if (Spread[i] is T res)
+                return res;
+            else return fallback;
+        }
+
+        public object this[int i]
+        {
+            get => Spread[i];
+            set => Spread[i] = value;
+        }
+    }
+
+    /// <summary>
+    /// Simple pin with spread
+    /// </summary>
+    public class SpreadPin : SpreadWrapper, IPinWrapper
+    {
+        public IIOContainer IOContainer { get; set; }
+        public SpreadPin(ISpread spread, IOAttribute attr, IIOContainer ioc) : base(spread, attr)
+        {
+            IOContainer = ioc;
         }
     }
 
     /// <summary>
     /// Simple pin with DiffSpread
     /// </summary>
-    public class DiffSpreadPin : SimplePin
+    public class DiffSpreadPin : DiffSpreadWrapper, IPinWrapper
     {
-        public IDiffSpread Spread;
-        public DiffSpreadPin(IDiffSpread spread, IOAttribute attr, IIOContainer ioc)
+        public IIOContainer IOContainer { get; set; }
+        public DiffSpreadPin(IDiffSpread spread, IOAttribute attr, IIOContainer ioc) : base(spread, attr)
         {
-            Attributes = attr;
             IOContainer = ioc;
-            Spread = spread;
-        }
-
-        public T GetSlice<T>(int i, T fallback)
-        {
-            if (Spread[i] is T res)
-                return res;
-            else return fallback;
-        }
-
-        public object this[int i]
-        {
-            get => Spread[i];
-            set => Spread[i] = value;
         }
     }
 
@@ -139,9 +171,9 @@ namespace mp.pddn
             RemoveTaggedOutput();
         }
 
-        protected SimplePin GetPin(string name, IDictionary pindict)
+        protected IPinWrapper GetPin(string name, IDictionary pindict)
         {
-            SimplePin pin;
+            IPinWrapper pin;
             switch (pindict)
             {
                 case Dictionary<string, DiffSpreadPin> dpd:
@@ -186,7 +218,7 @@ namespace mp.pddn
             var attr = pin.Attributes;
 
             var pinType = GetPinType(T, binSizable, pindict);
-
+            
             var ioc = FIOFactory.CreateIOContainer(pinType, attr);
             pin.IOContainer = ioc;
             switch (pindict)
@@ -206,7 +238,7 @@ namespace mp.pddn
 
         protected void AddPin(Type T, IOAttribute attr, bool binSizable, object customData, IDictionary pindict)
         {
-            SimplePin CreatePin(bool isdiff)
+            IPinWrapper CreatePin(bool isdiff)
             {
                 var pinType = GetPinType(T, binSizable, pindict);
 

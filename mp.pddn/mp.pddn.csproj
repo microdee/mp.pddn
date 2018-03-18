@@ -119,6 +119,7 @@
     <Compile Include="MiscExtensions.cs" />
     <Compile Include="NodeExtensions.cs" />
     <Compile Include="NodePinSimple.cs" />
+    <Compile Include="ObjectSplitNode.cs" />
     <Compile Include="PDDN.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
