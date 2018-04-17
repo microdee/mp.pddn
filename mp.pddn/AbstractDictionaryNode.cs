@@ -9,9 +9,12 @@ using VVVV.PluginInterfaces.V2;
 
 namespace mp.pddn
 {
-    public class AbstractDictionaryNode<TKey, TVal> : IPluginEvaluate
+    public class AbstractDictionaryNode<TKey, TVal> : IPluginEvaluate, IPartImportsSatisfiedNotification
     {
         #region fields & pins
+        [Input("Dictionary In")]
+        public Pin<Dictionary<TKey, TVal>> FDictIn;
+
         [Input("Default Keys")]
         public IDiffSpread<TKey> FKeys;
         [Input("Default Values")]
@@ -35,6 +38,8 @@ namespace mp.pddn
         [Input("Get Value Of")]
         public ISpread<TKey> FGetKey;
 
+        [Output("Dictionary Out")]
+        public ISpread<Dictionary<TKey, TVal>> FDictOut;
         [Output("Keys Out")]
         public ISpread<TKey> FKeysOut;
         [Output("Values")]
@@ -48,9 +53,18 @@ namespace mp.pddn
         public ILogger FLogger;
         #endregion fields & pins
 
+        public void OnImportsSatisfied()
+        {
+            FDictIn.Disconnected += (sender, args) => dict = new Dictionary<TKey, TVal>();
+        }
+
         //called when data for any output pin is requested
         public void Evaluate(int SpreadMax)
         {
+            if (FDictIn.IsConnected)
+            {
+                dict = FDictIn[0];
+            }
             if(FClear[0]) dict.Clear();
             if (FResetDefault[0])
             {
@@ -131,6 +145,8 @@ namespace mp.pddn
                 FQueryOut[i].SliceCount = 1;
                 FQueryOut[i][0] = dict[FGetKey[i]];
             }
+            FDictOut[0] = dict;
         }
+
     }
 }
