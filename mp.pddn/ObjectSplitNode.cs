@@ -61,7 +61,15 @@ namespace mp.pddn
         [Import] protected IIOFactory FIOFactory;
         [Import] protected IHDEHost HdeHost;
 
+        /// <summary>
+        /// Expose private members. Not recommended but can be used if needed
+        /// </summary>
         protected bool ExposePrivate = false;
+
+        /// <summary>
+        /// By default object values are cached so properties and enumerables are only executed once per frame. There are situations though when caching makes things worse.
+        /// </summary>
+        protected bool UseObjectCache = true;
 
         public virtual void OnImportsSatisfiedBegin() { }
         public virtual void OnImportsSatisfiedEnd() { }
@@ -238,9 +246,11 @@ namespace mp.pddn
                     valuespread.SliceCount++;
                     valuespread[-1] = TransformOutput(v, member, i);
                 }
-
-                valueCache.Collection = valuespread;
-                valueCache.Keys = keyspread;
+                if(valueCache != null)
+                {
+                    valueCache.Collection = valuespread;
+                    valueCache.Keys = keyspread;
+                }
             }
             else if (IsMemberEnumerable[member])
             {
@@ -253,12 +263,16 @@ namespace mp.pddn
                     spread[-1] = TransformOutput(o, member, i);
                 }
 
-                valueCache.Collection = spread;
+                if (valueCache != null)
+                    valueCache.Collection = spread;
             }
             else
             {
-                valueCache.Value = TransformOutput(memberValue, member, i);
-                Pd.OutputPins[member.Name][i] = valueCache.Value;
+                var val = TransformOutput(memberValue, member, i);
+                Pd.OutputPins[member.Name][i] = val;
+
+                if (valueCache != null)
+                    valueCache.Value = val;
             }
         }
 
@@ -281,7 +295,8 @@ namespace mp.pddn
 
         public void OnImportsSatisfied()
         {
-            ObjectSplitCache.Initialize(HdeHost);
+            if (UseObjectCache)
+                ObjectSplitCache.Initialize(HdeHost);
             Pd = new PinDictionary(FIOFactory);
             CType = typeof(T);
 
@@ -314,10 +329,13 @@ namespace mp.pddn
                 return;
             }
             var sprmax = FInput.SliceCount;
-            foreach (var input in FInput)
+            if(UseObjectCache)
             {
-                if (ObjectSplitCache.Cache.ContainsKey(input))
-                    ObjectSplitCache.Cache[input].Used = true;
+                foreach (var input in FInput)
+                {
+                    if (ObjectSplitCache.Cache.ContainsKey(input))
+                        ObjectSplitCache.Cache[input].Used = true;
+                }
             }
             if (FInput.IsChanged)
             {
@@ -330,7 +348,7 @@ namespace mp.pddn
                 {
                     var obj = FInput[i];
                     if (obj == null) continue;
-                    if (ObjectSplitCache.Cache.ContainsKey(obj))
+                    if (UseObjectCache && ObjectSplitCache.Cache.ContainsKey(obj))
                     {
                         var objCache = ObjectSplitCache.Cache[obj];
                         foreach (var member in IsMemberEnumerable.Keys)
@@ -343,7 +361,7 @@ namespace mp.pddn
                         objCache.Used = true;
                         objCache.Wrote = true;
                     }
-                    else
+                    else if(UseObjectCache)
                     {
                         var objCache = InitializeObjectCache(obj);
                         foreach (var member in IsMemberEnumerable.Keys)
@@ -353,6 +371,11 @@ namespace mp.pddn
                         }
                         objCache.Used = true;
                         objCache.Wrote = true;
+                    }
+                    else
+                    {
+                        foreach (var member in IsMemberEnumerable.Keys)
+                            AssignMemberValue(member, obj, i, null);
                     }
                 }
                 OnChangedEnd();
