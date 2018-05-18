@@ -50,33 +50,28 @@ namespace mp.pddn
                 _pin.GetUpsreamSlice(i, out var ui);
                 switch (usi)
                 {
-                    case IValueData _:
+                    case IValueData temp:
                     {
-                        var temp = usi as IValueData;
                         temp.GetValue(ui, out var t);
                         return t;
                     }
-                    case IColorData _:
+                    case IColorData temp:
                     {
-                        var temp = usi as IColorData;
                         temp.GetColor(ui, out var t);
                         return t;
                     }
-                    case IStringData _:
+                    case IStringData temp:
                     {
-                        var temp = usi as IStringData;
                         temp.GetString(ui, out var t);
                         return t;
                     }
-                    case IRawData _:
+                    case IRawData temp:
                     {
-                        var temp = usi as IRawData;
                         temp.GetData(ui, out var t);
                         return t;
                     }
-                    case IEnumerable<object> _:
+                    case IEnumerable<object> temp:
                     {
-                        var temp = usi as IEnumerable<object>;
                         return temp.ToArray()[ui];
                     }
                 }
@@ -226,37 +221,32 @@ namespace mp.pddn
                     _pin.GetUpsreamSlice(curroffs + j, out var ui);
                     switch (usi)
                     {
-                        case IValueData _:
+                        case IValueData temp:
                         {
-                            var temp = usi as IValueData;
                             temp.GetValue(ui, out var t);
                             res.Add(t);
                             continue;
                         }
-                        case IColorData _:
+                        case IColorData temp:
                         {
-                            var temp = usi as IColorData;
                             temp.GetColor(ui, out var t);
                             res.Add(t);
                             continue;
                         }
-                        case IStringData _:
+                        case IStringData temp:
                         {
-                            var temp = usi as IStringData;
                             temp.GetString(ui, out var t);
                             res.Add(t);
                             continue;
                         }
-                        case IRawData _:
+                        case IRawData temp:
                         {
-                            var temp = usi as IRawData;
                             temp.GetData(ui, out var t);
                             res.Add(t);
                             continue;
                         }
-                        case IEnumerable<object> _:
+                        case IEnumerable<object> temp:
                         {
-                            var temp = usi as IEnumerable<object>;
                             res.Add(temp.ToArray()[ui]);
                             continue;
                         }

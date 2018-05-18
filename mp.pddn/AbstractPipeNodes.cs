@@ -5,6 +5,7 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using md.stdl.Coding;
@@ -14,9 +15,13 @@ using VVVV.PluginInterfaces.V2;
 
 namespace mp.pddn
 {
-    public interface IPipeClientWrapper<TR, in TW> : IMainlooping
+    public delegate void ProxyEventHandler(EventArgs args);
+
+    public interface IPipeClientWrapper<TR, in TW, in TUnwrap, out TWrap> : IMainlooping
         where TR : class
         where TW : class
+        where TUnwrap : class
+        where TWrap : class
     {
         LinkedList<TR> AccumulatedData { get; }
         TR LastData { get; set; }
@@ -25,15 +30,19 @@ namespace mp.pddn
         bool IsConnected { get; }
         int Id { get; }
         string Name { get; }
+        Func<TW, TWrap> WrapperMethod { get; }
+        Func<TUnwrap, TR> UnwrapperMethod { get; }
 
         void Send(TW data);
     }
 
-    public class ServerSidePipeWrapper<TR, TW> : IPipeClientWrapper<TR, TW>
+    public class ServerSidePipeWrapper<TR, TW, TUnwrap, TWrap> : IPipeClientWrapper<TR, TW, TUnwrap, TWrap>
         where TR : class
         where TW : class
+        where TUnwrap : class
+        where TWrap : class
     {
-        public NamedPipeConnection<TR, TW> Connection
+        public NamedPipeConnection<TUnwrap, TWrap> Connection
         {
             get => _connection;
             set
@@ -53,24 +62,28 @@ namespace mp.pddn
 
         public string LastError { get; set; }
         
-        public bool MessageReceivedBang => _flatMessageReceived.Bang;
+        public bool MessageReceivedBang => FlatMessageReceived.Bang;
 
         public bool IsConnected => _connection.IsConnected;
         public int Id => _connection.Id;
         public string Name => _connection.Name;
+        public Func<TW, TWrap> WrapperMethod { get; }
+        public Func<TUnwrap, TR> UnwrapperMethod { get; }
 
-        private EventFlattener<ConnectionMessageEventHandler<TR, TW>, TR> _flatMessageReceived;
-        private EventFlattener<ConnectionExceptionEventHandler<TR, TW>, Exception> _flatError;
+        public EventFlattener<ProxyEventHandler, EventArgs> FlatMessageReceived;
+        public EventFlattener<ProxyEventHandler, EventArgs> FlatError;
         private Queue<TR> _accumulatedData { get; } = new Queue<TR>();
-        private NamedPipeConnection<TR, TW> _connection;
+        private NamedPipeConnection<TUnwrap, TWrap> _connection;
 
         public void Send(TW data)
         {
-            _connection.PushMessage(data);
+            _connection.PushMessage(WrapperMethod(data));
         }
 
-        public ServerSidePipeWrapper(NamedPipeConnection<TR, TW> conn)
+        public ServerSidePipeWrapper(NamedPipeConnection<TUnwrap, TWrap> conn, Func<TW, TWrap> wrapper, Func<TUnwrap, TR> unwrapper)
         {
+            WrapperMethod = wrapper;
+            UnwrapperMethod = unwrapper;
             _connection = conn;
             Subscribe();
         }
@@ -79,32 +92,38 @@ namespace mp.pddn
         {
             _connection.ReceiveMessage += OnMessage;
             _connection.Error += OnError;
-            _flatMessageReceived = new EventFlattener<ConnectionMessageEventHandler<TR, TW>, TR>(
-                handler => _connection.ReceiveMessage += handler,
-                handler => _connection.ReceiveMessage -= handler
+            FlatMessageReceived = new EventFlattener<ProxyEventHandler, EventArgs>(
+                handler => OnMessageProxy += handler,
+                handler => OnMessageProxy -= handler
             );
-            _flatError = new EventFlattener<ConnectionExceptionEventHandler<TR, TW>, Exception>(
-                handler => _connection.Error += handler,
-                handler => _connection.Error -= handler
+            FlatError = new EventFlattener<ProxyEventHandler, EventArgs>(
+                handler => OnErrorProxy += handler,
+                handler => OnErrorProxy -= handler
             );
         }
 
-        private void OnError(NamedPipeConnection<TR, TW> namedPipeConnection, Exception exception)
+        private void OnError(NamedPipeConnection<TUnwrap, TWrap> namedPipeConnection, Exception exception)
         {
             LastError = exception.Message;
+            OnErrorProxy?.Invoke(EventArgs.Empty);
         }
 
-        private void OnMessage(NamedPipeConnection<TR, TW> connection, TR message)
+        private void OnMessage(NamedPipeConnection<TUnwrap, TWrap> connection, TUnwrap message)
         {
-            _accumulatedData.Enqueue(message);
-            LastData = message;
+            var unwrapped = UnwrapperMethod(message);
+            _accumulatedData.Enqueue(unwrapped);
+            LastData = unwrapped;
+            OnMessageProxy?.Invoke(EventArgs.Empty);
         }
+
+        public event ProxyEventHandler OnMessageProxy;
+        public event ProxyEventHandler OnErrorProxy;
 
         public void Mainloop(float deltatime)
         {
             OnMainLoopBegin?.Invoke(this, EventArgs.Empty);
-            _flatMessageReceived.Mainloop(0);
-            _flatError.Mainloop(0);
+            FlatMessageReceived.Mainloop(0);
+            FlatError.Mainloop(0);
             AccumulatedData.Clear();
             lock (_accumulatedData)
             {
@@ -120,19 +139,24 @@ namespace mp.pddn
         public event EventHandler OnMainLoopEnd;
     }
 
-    public abstract class PipeServerNode<TR, TW> : IPluginEvaluate
+    public abstract class PipeServerNode<TR, TW, TUnwrap, TWrap> : IPluginEvaluate
         where TR : class
         where TW : class
+        where TUnwrap : class
+        where TWrap : class
     {
         [Import]
         public IHDEHost Host;
 
-        private readonly Dictionary<int, ServerSidePipeWrapper<TR, TW>> _clients = new Dictionary<int, ServerSidePipeWrapper<TR, TW>>();
-        private Server<TR, TW> _server;
+        private readonly Dictionary<int, ServerSidePipeWrapper<TR, TW, TUnwrap, TWrap>> _clients = new Dictionary<int, ServerSidePipeWrapper<TR, TW, TUnwrap, TWrap>>();
+        private Server<TUnwrap, TWrap> _server;
         
-        private EventFlattener<ConnectionEventHandler<TR, TW>, NamedPipeConnection<TR, TW>> _clientConnected;
-        private EventFlattener<ConnectionEventHandler<TR, TW>, NamedPipeConnection<TR, TW>> _clientDisconnected;
-        private EventFlattener<PipeExceptionEventHandler, Exception> _error;
+        public EventFlattener<ConnectionEventHandler<TUnwrap, TWrap>, NamedPipeConnection<TUnwrap, TWrap>> ClientConnected;
+        public EventFlattener<ConnectionEventHandler<TUnwrap, TWrap>, NamedPipeConnection<TUnwrap, TWrap>> ClientDisconnected;
+        public EventFlattener<PipeExceptionEventHandler, Exception> Error;
+
+        protected abstract TWrap Wrap(TW data);
+        protected abstract TR Unwrap(TUnwrap message);
 
         [Input("Pipe Name")]
         public IDiffSpread<string> FPipeName;
@@ -144,7 +168,7 @@ namespace mp.pddn
         public ISpread<bool> FBroadcast;
 
         [Output("Clients")]
-        public ISpread<ServerSidePipeWrapper<TR, TW>> FClients;
+        public ISpread<ServerSidePipeWrapper<TR, TW, TUnwrap, TWrap>> FClients;
         [Output("Client Connected", IsBang = true)]
         public ISpread<bool> FConnected;
         [Output("Client Disconnected", IsBang = true)]
@@ -154,21 +178,21 @@ namespace mp.pddn
         [Output("Last Error")]
         public ISpread<string> FErrorMessage;
         [Output("Last Disconnected")]
-        public ISpread<ServerSidePipeWrapper<TR, TW>> FLastClient;
+        public ISpread<ServerSidePipeWrapper<TR, TW, TUnwrap, TWrap>> FLastClient;
 
         public void ObserveEvents()
         {
-            _clientConnected = new EventFlattener<ConnectionEventHandler<TR, TW>, NamedPipeConnection<TR, TW>>(
+            ClientConnected = new EventFlattener<ConnectionEventHandler<TUnwrap, TWrap>, NamedPipeConnection<TUnwrap, TWrap>>(
                     handler => _server.ClientConnected += handler,
                     handler => _server.ClientConnected -= handler
                 );
 
-            _clientDisconnected = new EventFlattener<ConnectionEventHandler<TR, TW>, NamedPipeConnection<TR, TW>>(
+            ClientDisconnected = new EventFlattener<ConnectionEventHandler<TUnwrap, TWrap>, NamedPipeConnection<TUnwrap, TWrap>>(
                     handler => _server.ClientDisconnected += handler,
                     handler => _server.ClientDisconnected -= handler
                 );
 
-            _error = new EventFlattener<PipeExceptionEventHandler, Exception>(
+            Error = new EventFlattener<PipeExceptionEventHandler, Exception>(
                     handler => _server.Error += handler,
                     handler => _server.Error -= handler
                 );
@@ -181,7 +205,7 @@ namespace mp.pddn
                 _server?.Stop();
                 if (FPipeName.SliceCount > 0 && !string.IsNullOrWhiteSpace(FPipeName[0]))
                 {
-                    _server = new Server<TR, TW>(FPipeName[0], null);
+                    _server = new Server<TUnwrap, TWrap>(FPipeName[0], null);
                     _server.ClientConnected += connection =>
                     {
                         lock (_clients)
@@ -193,14 +217,14 @@ namespace mp.pddn
                             }
                             else
                             {
-                                var clwrap = new ServerSidePipeWrapper<TR, TW>(connection);
+                                var clwrap = new ServerSidePipeWrapper<TR, TW, TUnwrap, TWrap>(connection, Wrap, Unwrap);
                                 _clients.Add(connection.Id, clwrap);
                             }
                         }
 
                         foreach (var data in FDataWelcome)
                         {
-                            if (data != null) connection.PushMessage(data);
+                            if (data != null) connection.PushMessage(Wrap(data));
                         }
                     };
                     _server.ClientDisconnected += connection =>
@@ -227,7 +251,7 @@ namespace mp.pddn
             {
                 if (FBroadcast[i])
                 {
-                    if(FData[i] != null) _server.PushMessage(FData[i]);
+                    if(FData[i] != null) _server.PushMessage(Wrap(FData[i]));
                 }
             }
 
@@ -243,25 +267,29 @@ namespace mp.pddn
                 }
             }
 
-            _clientConnected.Mainloop(0);
-            FConnected[0] = _clientConnected.Bang;
-            _clientDisconnected.Mainloop(0);
-            FDisconnected[0] = _clientDisconnected.Bang;
-            _error.Mainloop(0);
-            FError[0] = _error.Bang;
+            ClientConnected?.Mainloop(0);
+            FConnected[0] = ClientConnected?.Bang ?? false;
+            ClientDisconnected?.Mainloop(0);
+            FDisconnected[0] = ClientDisconnected?.Bang ?? false;
+            Error?.Mainloop(0);
+            FError[0] = Error?.Bang ?? false;
         }
     }
 
-    public class ClientSidePipeWrapper<TR, TW> : IPipeClientWrapper<TR, TW>
+    public class ClientSidePipeWrapper<TR, TW, TUnwrap, TWrap> : IPipeClientWrapper<TR, TW, TUnwrap, TWrap>
         where TR : class
         where TW : class
+        where TUnwrap : class
+        where TWrap : class
     {
-        public NamedPipeClient<TR, TW> Client { get; }
+        public NamedPipeClient<TUnwrap, TWrap> Client { get; }
 
-        public NamedPipeConnection<TR, TW> Connection { get; private set; }
+        public NamedPipeConnection<TUnwrap, TWrap> Connection { get; private set; }
 
-        public ClientSidePipeWrapper(NamedPipeClient<TR, TW> client, string name)
+        public ClientSidePipeWrapper(NamedPipeClient<TUnwrap, TWrap> client, string name, Func<TW, TWrap> wrapper, Func<TUnwrap, TR> unwrapper)
         {
+            WrapperMethod = wrapper;
+            UnwrapperMethod = unwrapper;
             Client = client;
             Name = name;
             SubscribeClient();
@@ -272,62 +300,70 @@ namespace mp.pddn
 
         public string LastError { get; set; }
 
-        public bool MessageReceivedBang => _flatMessageReceived.Bang;
+        public bool MessageReceivedBang => FlatMessageReceived.Bang;
 
         public bool IsConnected => Connection?.IsConnected ?? true;
 
         public int Id => Connection?.Id ?? -1;
 
         public string Name { get; }
+        public Func<TW, TWrap> WrapperMethod { get; }
+        public Func<TUnwrap, TR> UnwrapperMethod { get; }
 
-        private EventFlattener<ConnectionMessageEventHandler<TR, TW>, TR> _flatMessageReceived;
-        private EventFlattener<ConnectionExceptionEventHandler<TR, TW>, Exception> _flatError;
+        public EventFlattener<ProxyEventHandler, EventArgs> FlatMessageReceived;
+        public EventFlattener<ProxyEventHandler, EventArgs> FlatError;
         private Queue<TR> _accumulatedData { get; } = new Queue<TR>();
 
         public void Send(TW data)
         {
-            Client.PushMessage(data);
+            Client.PushMessage(WrapperMethod(data));
         }
 
         private void SubscribeClient()
         {
             Client.ServerMessage += OnMessage;
-            _flatMessageReceived = new EventFlattener<ConnectionMessageEventHandler<TR, TW>, TR>(
-                handler => Client.ServerMessage += handler,
-                handler => Client.ServerMessage -= handler
+            FlatMessageReceived = new EventFlattener<ProxyEventHandler, EventArgs>(
+                handler => OnMessageProxy += handler,
+                handler => OnMessageProxy -= handler
             );
         }
 
         private void SubscribeConn()
         {
             Connection.Error += OnError;
-            _flatError = new EventFlattener<ConnectionExceptionEventHandler<TR, TW>, Exception>(
-                handler => Connection.Error += handler,
-                handler => Connection.Error -= handler
+            FlatError = new EventFlattener<ProxyEventHandler, EventArgs>(
+                handler => OnErrorProxy += handler,
+                handler => OnErrorProxy -= handler
             );
         }
 
-        private void OnError(NamedPipeConnection<TR, TW> namedPipeConnection, Exception exception)
+        private void OnError(NamedPipeConnection<TUnwrap, TWrap> namedPipeConnection, Exception exception)
         {
             LastError = exception.Message;
+            OnErrorProxy?.Invoke(EventArgs.Empty);
         }
 
-        private void OnMessage(NamedPipeConnection<TR, TW> connection, TR message)
+        private void OnMessage(NamedPipeConnection<TUnwrap, TWrap> connection, TUnwrap message)
         {
+            var unwrapped = UnwrapperMethod(message);
             if (Connection == null)
             {
                 Connection = connection;
                 SubscribeConn();
             }
-            _accumulatedData.Enqueue(message);
-            LastData = message;
+            _accumulatedData.Enqueue(unwrapped);
+            LastData = unwrapped;
+            OnMessageProxy?.Invoke(EventArgs.Empty);
         }
+
+        public event ProxyEventHandler OnMessageProxy;
+        public event ProxyEventHandler OnErrorProxy;
 
         public void Mainloop(float deltatime)
         {
             OnMainLoopBegin?.Invoke(this, EventArgs.Empty);
-            _flatMessageReceived.Mainloop(0);
-            _flatError.Mainloop(0);
+            FlatMessageReceived?.Mainloop(0);
+            FlatError?.Mainloop(0);
             AccumulatedData.Clear();
             lock (_accumulatedData)
             {
@@ -343,14 +379,16 @@ namespace mp.pddn
         public event EventHandler OnMainLoopEnd;
     }
 
-    public abstract class PipeClientNode<TR, TW> : IPluginEvaluate
+    public abstract class PipeClientNode<TR, TW, TUnwrap, TWrap> : IPluginEvaluate
         where TR : class
         where TW : class
+        where TUnwrap : class
+        where TWrap : class
     {
         [Import]
         public IHDEHost Host;
 
-        private readonly Dictionary<string, ClientSidePipeWrapper<TR, TW>> _clients = new Dictionary<string, ClientSidePipeWrapper<TR, TW>>();
+        private readonly Dictionary<string, ClientSidePipeWrapper<TR, TW, TUnwrap, TWrap>> _clients = new Dictionary<string, ClientSidePipeWrapper<TR, TW, TUnwrap, TWrap>>();
 
         [Input("Pipe Name")]
         public IDiffSpread<string> FPipeName;
@@ -362,7 +400,10 @@ namespace mp.pddn
         public ISpread<bool> FBroadcast;
 
         [Output("Clients")]
-        public ISpread<ClientSidePipeWrapper<TR, TW>> FClients;
+        public ISpread<ClientSidePipeWrapper<TR, TW, TUnwrap, TWrap>> FClients;
+
+        protected abstract TWrap Wrap(TW data);
+        protected abstract TR Unwrap(TUnwrap message);
 
         public void Evaluate(int SpreadMax)
         {
@@ -378,8 +419,8 @@ namespace mp.pddn
                 }
                 else
                 {
-                    var pclient = new NamedPipeClient<TR, TW>(FPipeName[i]);
-                    var client = new ClientSidePipeWrapper<TR, TW>(pclient, FPipeName[i]);
+                    var pclient = new NamedPipeClient<TUnwrap, TWrap>(FPipeName[i]);
+                    var client = new ClientSidePipeWrapper<TR, TW, TUnwrap, TWrap>(pclient, FPipeName[i], Wrap, Unwrap);
                     _clients.Add(client.Name, client);
                     pclient.Start(TimeSpan.FromSeconds(FTimeOutSec[i]));
                     client.Mainloop(0);
@@ -395,15 +436,17 @@ namespace mp.pddn
         }
     }
 
-    public abstract class PipeClientSendNode<TR, TW> : IPluginEvaluate
+    public abstract class PipeClientSendNode<TR, TW, TUnwrap, TWrap> : IPluginEvaluate
         where TR : class
         where TW : class
+        where TUnwrap : class
+        where TWrap : class
     {
         [Import]
         public IHDEHost Host;
 
         [Input("Clients")]
-        public Pin<ClientSidePipeWrapper<TR, TW>> FClients;
+        public Pin<ClientSidePipeWrapper<TR, TW, TUnwrap, TWrap>> FClients;
         [Input("Data")]
         public ISpread<ISpread<TW>> FData;
         [Input("Send", IsBang = true)]
@@ -424,5 +467,10 @@ namespace mp.pddn
         }
     }
 
-    public abstract class PipeClientSplitNode<TR, TW> : ObjectSplitNode<IPipeClientWrapper<TR, TW>> where TR : class where TW : class { }
+    public abstract class PipeClientSplitNode<TR, TW, TUnwrap, TWrap> : ObjectSplitNode<IPipeClientWrapper<TR, TW, TUnwrap, TWrap>>
+        where TR : class
+        where TW : class
+        where TUnwrap : class
+        where TWrap : class
+    { }
 }
