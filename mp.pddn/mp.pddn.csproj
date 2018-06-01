@@ -36,9 +36,6 @@
     <Reference Include="md.stdl, Version=0.2.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\md-stdl.0.2.3-beta\lib\Net47\md.stdl.dll</HintPath>
     </Reference>
-    <Reference Include="NamedPipeWrapper, Version=1.5.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\NamedPipeWrapper.1.5.3-Beta\lib\net40\NamedPipeWrapper.dll</HintPath>
-    </Reference>
     <Reference Include="SevenZip, Version=9.20.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\LZMA-SDK.9.20\lib\net20\SevenZip.dll</HintPath>
     </Reference>
@@ -118,7 +115,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AbstractDictionaryNode.cs" />
-    <Compile Include="AbstractPipeNodes.cs" />
     <Compile Include="CommonAbstractNodePatterns.cs" />
     <Compile Include="ConfigurableDynamicPinNode.cs" />
     <Compile Include="ConfigurableTypePinGroup.cs" />
