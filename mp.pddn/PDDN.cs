@@ -209,6 +209,7 @@ namespace mp.pddn
 
         protected void ChangeType(string name, Type T, bool binSizable, IDictionary pindict)
         {
+            if (T.IsPointer) return;
             if (!pindict.Contains(name)) return;
 
             var pin = GetPin(name, pindict);
@@ -238,6 +239,7 @@ namespace mp.pddn
 
         protected void AddPin(Type T, IOAttribute attr, bool binSizable, object customData, IDictionary pindict)
         {
+            if (T.IsPointer) return;
             IPinWrapper CreatePin(bool isdiff)
             {
                 var pinType = GetPinType(T, binSizable, pindict);
@@ -283,6 +285,7 @@ namespace mp.pddn
 
         public DiffSpreadPin AddConfig(Type T, ConfigAttribute attr, object obj = null)
         {
+            if (T.IsPointer) return null;
             if (ExchangingConfig && ConfigTaggedForRemove.Contains(attr.Name))
                 ConfigTaggedForRemove.Remove(attr.Name);
 
@@ -296,6 +299,7 @@ namespace mp.pddn
 
         public DiffSpreadPin AddInput(Type T, InputAttribute attr, bool binSized = false, object obj = null)
         {
+            if (T.IsPointer) return null;
             if (ExchangingInput && InputTaggedForRemove.Contains(attr.Name))
                 InputTaggedForRemove.Remove(attr.Name);
 
@@ -313,6 +317,7 @@ namespace mp.pddn
         }
         public SpreadPin AddOutput(Type T, OutputAttribute attr, bool binSized = false, object obj = null)
         {
+            if (T.IsPointer) return null;
             if (ExchangingOutput && OutputTaggedForRemove.Contains(attr.Name))
                 OutputTaggedForRemove.Remove(attr.Name);
 

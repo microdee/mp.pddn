@@ -108,6 +108,7 @@ namespace mp.pddn
 
         protected Type CType;
         protected PinDictionary Pd;
+        protected string NodePath;
 
         private void AddMemberPin(MemberInfo member)
         {
@@ -124,6 +125,7 @@ namespace mp.pddn
                     break;
                 case PropertyInfo prop:
                     if (!prop.CanRead) return;
+                    if (prop.PropertyType.IsPointer) return;
                     if (prop.GetIndexParameters().Length > 0) return;
 
                     memberType = prop.PropertyType;
@@ -295,6 +297,7 @@ namespace mp.pddn
 
         public void OnImportsSatisfied()
         {
+            NodePath = FPluginHost.GetNodePath(false)
             if (UseObjectCache)
                 ObjectSplitCache.Initialize(HdeHost);
             Pd = new PinDictionary(FIOFactory);
