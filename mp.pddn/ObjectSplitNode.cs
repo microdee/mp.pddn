@@ -297,7 +297,7 @@ namespace mp.pddn
 
         public void OnImportsSatisfied()
         {
-            NodePath = FPluginHost.GetNodePath(false)
+            NodePath = FPluginHost.GetNodePath(false);
             if (UseObjectCache)
                 ObjectSplitCache.Initialize(HdeHost);
             Pd = new PinDictionary(FIOFactory);
