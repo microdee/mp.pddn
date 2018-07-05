@@ -10,37 +10,79 @@ using VVVV.Utils.Streams;
 
 namespace mp.pddn
 {
+    /// <summary>
+    /// Metadata for pins
+    /// </summary>
     public interface ISpreadMeta
     {
+        /// <summary>
+        /// Custom attachable object for utility
+        /// </summary>
         object CustomData { get; set; }
+        /// <summary>
+        /// Binsized or not
+        /// </summary>
         bool BinSized { get; set; }
+        /// <summary>
+        /// Type of the pin
+        /// </summary>
         Type Type { get; set; }
+        /// <summary>
+        /// Pin attributes
+        /// </summary>
         IOAttribute Attributes { get; set; }
     }
+
     /// <summary>
     /// An abstract pin wrapper containing all types a pin is operating with
     /// </summary>
     public interface ISimplePin
     {
+        /// <summary>
+        /// The IO container for this pin
+        /// </summary>
         IIOContainer IOContainer { get; set; }
     }
 
+    /// <inheritdoc cref="ISpreadMeta" />
+    /// <inheritdoc cref="ISimplePin" />
     public interface IPinWrapper : ISpreadMeta, ISimplePin { }
 
+    /// <inheritdoc />
+    /// <summary>
+    /// Pin wrapper containing all types a pin is operating with
+    /// </summary>
     public class SpreadWrapper : ISpreadMeta
     {
+        /// <inheritdoc />
         public object CustomData { get; set; }
+        /// <inheritdoc />
         public bool BinSized { get; set; }
+        /// <inheritdoc />
         public Type Type { get; set; }
+        /// <inheritdoc />
         public IOAttribute Attributes { get; set; }
+
+        /// <summary>
+        /// The non-generic spread of the pin
+        /// </summary>
         public ISpread Spread { get; set; }
 
+        /// <summary></summary>
+        /// <param name="spread"></param>
+        /// <param name="attr"></param>
         public SpreadWrapper(ISpread spread, IOAttribute attr)
         {
             Attributes = attr;
             Spread = spread;
         }
-
+        /// <summary>
+        /// Generic getslice
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="i">Slice of the spread</param>
+        /// <param name="fallback">Default value if casting isn't successful</param>
+        /// <returns></returns>
         public T GetSlice<T>(int i, T fallback)
         {
             if (Spread[i] is T res)
@@ -48,6 +90,11 @@ namespace mp.pddn
             else return fallback;
         }
 
+        /// <summary>
+        /// Shortcut for spread get/set
+        /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public object this[int i]
         {
             get => Spread[i];
@@ -55,20 +102,41 @@ namespace mp.pddn
         }
     }
 
+    /// <inheritdoc />
+    /// <summary>
+    /// Pin wrapper containing all types a pin is operating with for DiffSpreads
+    /// </summary>
     public class DiffSpreadWrapper : ISpreadMeta
     {
+        /// <inheritdoc />
         public object CustomData { get; set; }
+        /// <inheritdoc />
         public bool BinSized { get; set; }
+        /// <inheritdoc />
         public Type Type { get; set; }
+        /// <inheritdoc />
         public IOAttribute Attributes { get; set; }
+        /// <summary>
+        /// The non-generic spread of the pin
+        /// </summary>
         public IDiffSpread Spread { get; set; }
 
+        /// <summary></summary>
+        /// <param name="spread"></param>
+        /// <param name="attr"></param>
         public DiffSpreadWrapper(IDiffSpread spread, IOAttribute attr)
         {
             Attributes = attr;
             Spread = spread;
         }
 
+        /// <summary>
+        /// Generic getslice
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="i">Slice of the spread</param>
+        /// <param name="fallback">Default value if casting isn't successful</param>
+        /// <returns></returns>
         public T GetSlice<T>(int i, T fallback)
         {
             if (Spread[i] is T res)
@@ -76,6 +144,11 @@ namespace mp.pddn
             else return fallback;
         }
 
+        /// <summary>
+        /// Shortcut for spread get/set
+        /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public object this[int i]
         {
             get => Spread[i];
@@ -84,11 +157,17 @@ namespace mp.pddn
     }
 
     /// <summary>
-    /// Simple pin with spread
+    /// Simple pin with spread and IO Container
     /// </summary>
     public class SpreadPin : SpreadWrapper, IPinWrapper
     {
+        /// <inheritdoc />
         public IIOContainer IOContainer { get; set; }
+
+        /// <summary></summary>
+        /// <param name="spread"></param>
+        /// <param name="attr"></param>
+        /// <param name="ioc"></param>
         public SpreadPin(ISpread spread, IOAttribute attr, IIOContainer ioc) : base(spread, attr)
         {
             IOContainer = ioc;
@@ -96,11 +175,17 @@ namespace mp.pddn
     }
 
     /// <summary>
-    /// Simple pin with DiffSpread
+    /// Simple pin with DiffSpread and IO Container
     /// </summary>
     public class DiffSpreadPin : DiffSpreadWrapper, IPinWrapper
     {
+        /// <inheritdoc />
         public IIOContainer IOContainer { get; set; }
+
+        /// <summary></summary>
+        /// <param name="spread"></param>
+        /// <param name="attr"></param>
+        /// <param name="ioc"></param>
         public DiffSpreadPin(IDiffSpread spread, IOAttribute attr, IIOContainer ioc) : base(spread, attr)
         {
             IOContainer = ioc;

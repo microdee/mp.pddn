@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
+using VVVV.Utils.Reflection;
 
 namespace mp.pddn
 {
@@ -71,6 +73,32 @@ namespace mp.pddn
         /// </summary>
         protected bool UseObjectCache = true;
 
+        /// <summary>
+        /// Expose attributes of listed types for specific members. Null turns off this feature, default is null
+        /// </summary>
+        protected Dictionary<string, HashSet<Type>> ExposeMemberAttributes;
+
+        /// <summary>
+        /// Expose attributes of listed types for all members. Null turns off this feature, default is null
+        /// </summary>
+        protected HashSet<Type> ExposeAttributes;
+
+        /// <summary>
+        /// If not null (which is by default) and not empty, only expose members present in this collection
+        /// </summary>
+        /// <remarks>
+        /// If white list is also valid, black list is ignored
+        /// </remarks>
+        protected StringCollection MemberWhiteList;
+
+        /// <summary>
+        /// If not null (which is by default) and not empty, don't expose members present in this collection
+        /// </summary>
+        /// <remarks>
+        /// If white list is also valid, black list is ignored
+        /// </remarks>
+        protected StringCollection MemberBlackList;
+
         public virtual void OnImportsSatisfiedBegin() { }
         public virtual void OnImportsSatisfiedEnd() { }
 
@@ -102,7 +130,7 @@ namespace mp.pddn
         {
             return original;
         }
-
+        
         protected Dictionary<MemberInfo, bool> IsMemberEnumerable = new Dictionary<MemberInfo, bool>();
         protected Dictionary<MemberInfo, bool> IsMemberDictionary = new Dictionary<MemberInfo, bool>();
 
@@ -110,9 +138,58 @@ namespace mp.pddn
         protected PinDictionary Pd;
         protected string NodePath;
 
+        private bool AllowMember(MemberInfo member)
+        {
+            if (MemberWhiteList != null && MemberWhiteList.Count > 0)
+            {
+                return MemberWhiteList.Contains(member.Name);
+            }
+            if (MemberBlackList != null && MemberBlackList.Count > 0)
+            {
+                return !MemberBlackList.Contains(member.Name);
+            }
+            return true;
+        }
+
+        private void AddMemberAttributePin(MemberInfo member)
+        {
+            if(ExposeAttributes != null)
+                AddMemberAttributePin(member, ExposeAttributes);
+            if(ExposeMemberAttributes != null && ExposeMemberAttributes.ContainsKey(member.Name))
+                AddMemberAttributePin(member, ExposeMemberAttributes[member.Name]);
+        }
+
+        private void AddMemberAttributePin(MemberInfo member, HashSet<Type> desiredattrtypes)
+        {
+            foreach (var attrtype in desiredattrtypes)
+            {
+                Attribute[] validattrs;
+                try
+                {
+                    validattrs = member.GetCustomAttributes(attrtype).ToArray();
+                }
+                catch (Exception e)
+                {
+                    continue;
+                }
+                if(validattrs.Length == 0) continue;
+                var pin = Pd.AddOutput(TransformType(attrtype, member), new OutputAttribute($"{member.Name} {attrtype.GetCSharpName()}")
+                {
+                    Visibility = PinVisibility.OnlyInspector
+                });
+                pin.Spread.SliceCount = validattrs.Length;
+                for (int i = 0; i < validattrs.Length; i++)
+                {
+                    pin[i] = TransformOutput(validattrs[i], member, i);
+                }
+            }
+        }
+
         private void AddMemberPin(MemberInfo member)
         {
             if (!(member is FieldInfo) && !(member is PropertyInfo)) return;
+            if(!AllowMember(member)) return;
+
             Type memberType = typeof(object);
             switch (member)
             {
@@ -200,6 +277,7 @@ namespace mp.pddn
                 Pd.AddOutput(TransformType(memberType, member), new OutputAttribute(member.Name));
                 enumerable = false;
             }
+            AddMemberAttributePin(member);
             IsMemberEnumerable.Add(member, enumerable);
             IsMemberDictionary.Add(member, dictionary);
         }
