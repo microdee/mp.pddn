@@ -35,29 +35,45 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="md.stdl, Version=0.2.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\md-stdl.0.2.3-beta\lib\Net47\md.stdl.dll</HintPath>
+    <Reference Include="Costura, Version=3.1.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
+      <HintPath>packages\Costura.Fody.3.1.0\lib\net46\Costura.dll</HintPath>
+    </Reference>
+    <Reference Include="md.stdl, Version=999.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\md-stdl.999.0.0\lib\net47\md.stdl.dll</HintPath>
     </Reference>
     <Reference Include="SevenZip, Version=9.20.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\LZMA-SDK.9.20\lib\net20\SevenZip.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <HintPath>packages\SharpDX.4.0.1\lib\net45\SharpDX.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="SharpDX.RawInput, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <HintPath>packages\SharpDX.RawInput.4.0.1\lib\net45\SharpDX.RawInput.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="SimMetrics.Net, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\SimMetrics.Net.1.0.4\lib\net45\SimMetrics.Net.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SlimDX">
+      <HintPath>..\vvvvlib\SlimDX.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Buffers.4.4.0\lib\netstandard2.0\System.Buffers.dll</HintPath>
+    </Reference>
     <Reference Include="System.ComponentModel.Composition.CodePlex">
-      <HintPath>dlls\System.ComponentModel.Composition.CodePlex.dll</HintPath>
+      <HintPath>..\vvvvlib\System.ComponentModel.Composition.CodePlex.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Core" />
     <Reference Include="System.Interactive, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
       <HintPath>packages\System.Interactive.3.1.1\lib\net45\System.Interactive.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory, Version=4.0.1.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Memory.4.5.1\lib\netstandard2.0\System.Memory.dll</HintPath>
     </Reference>
     <Reference Include="System.Numerics" />
     <Reference Include="System.Numerics.Vectors, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -78,6 +94,13 @@
     <Reference Include="System.Reactive.PlatformServices, Version=3.0.3000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
       <HintPath>packages\System.Reactive.PlatformServices.4.0.0-preview00001\lib\net46\System.Reactive.PlatformServices.dll</HintPath>
     </Reference>
+    <Reference Include="System.Reflection.Context.CodePlex">
+      <HintPath>..\vvvvlib\System.Reflection.Context.CodePlex.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Runtime.CompilerServices.Unsafe.4.5.0\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -86,31 +109,31 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="VVVV.Core">
-      <HintPath>dlls\VVVV.Core.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Hosting">
-      <HintPath>dlls\VVVV.Hosting.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.Hosting.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Nodes.Generic">
-      <HintPath>dlls\VVVV.Nodes.Generic.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.Nodes.Generic.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.PluginInterfaces">
-      <HintPath>dlls\VVVV.PluginInterfaces.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.PluginInterfaces.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Utils">
-      <HintPath>dlls\VVVV.Utils.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.Utils.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.Utils3rdParty">
-      <HintPath>dlls\VVVV.Utils3rdParty.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.Utils3rdParty.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VVVV.UtilsIL">
-      <HintPath>dlls\VVVV.UtilsIL.dll</HintPath>
+      <HintPath>..\vvvvlib\VVVV.UtilsIL.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="WindowsBase" />
@@ -120,6 +143,7 @@
     <Compile Include="CommonAbstractNodePatterns.cs" />
     <Compile Include="ConfigurableDynamicPinNode.cs" />
     <Compile Include="ConfigurableTypePinGroup.cs" />
+    <Compile Include="Costura.cs" />
     <Compile Include="MiscExtensions.cs" />
     <Compile Include="NodeExtensions.cs" />
     <Compile Include="NodePinSimple.cs" />
@@ -128,10 +152,27 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="mp.pddn.nuspec">
+    <None Include="package.nuspec">
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="FodyWeavers.xml" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="packages\Fody.3.1.3\build\Fody.targets" Condition="Exists('packages\Fody.3.1.3\build\Fody.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Fody.3.1.3\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Fody.3.1.3\build\Fody.targets'))" />
+    <Error Condition="!Exists('packages\Costura.Fody.3.1.0\build\Costura.Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Costura.Fody.3.1.0\build\Costura.Fody.targets'))" />
+  </Target>
+  <Import Project="packages\Costura.Fody.3.1.0\build\Costura.Fody.targets" Condition="Exists('packages\Costura.Fody.3.1.0\build\Costura.Fody.targets')" />
+  <Target
+    AfterTargets="AfterBuild;NonWinFodyTarget"
+    Name="CleanReferenceCopyLocalPaths" >
+    <Delete Files="@(ReferenceCopyLocalPaths->'$(OutDir)%(DestinationSubDirectory)%(Filename)%(Extension)')" />
+  </Target>
 </Project>

@@ -159,21 +159,21 @@ namespace mp.pddn
                 AddMemberAttributePin(member, ExposeMemberAttributes[member.Name]);
         }
 
-        private void AddMemberAttributePin(MemberInfo member, HashSet<Type> desiredattrtypes)
+        private void AddMemberAttributePin(MemberInfo member, IEnumerable<Type> desiredattrtypes)
         {
             foreach (var attrtype in desiredattrtypes)
             {
                 Attribute[] validattrs;
                 try
                 {
-                    validattrs = member.GetCustomAttributes(attrtype).ToArray();
+                    validattrs = member.GetCustomAttributes(attrtype, true).Cast<Attribute>().ToArray();
                 }
                 catch (Exception e)
                 {
                     continue;
                 }
                 if(validattrs.Length == 0) continue;
-                var pin = Pd.AddOutput(TransformType(attrtype, member), new OutputAttribute($"{member.Name} {attrtype.GetCSharpName()}")
+                var pin = Pd.AddOutput(TransformType(attrtype, member), new OutputAttribute(member.Name + " " + attrtype.GetCSharpName())
                 {
                     Visibility = PinVisibility.OnlyInspector
                 });
