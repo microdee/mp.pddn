@@ -36,16 +36,14 @@ namespace mp.pddn
         [Input("Clear", IsBang = true)]
         public ISpread<bool> FClear;
         [Input("Get Value Of")]
-        public ISpread<TKey> FGetKey;
+        public Pin<TKey> FGetKey;
 
         [Output("Dictionary Out")]
         public ISpread<Dictionary<TKey, TVal>> FDictOut;
-        [Output("Keys Out")]
+        [Output("Keys")]
         public ISpread<TKey> FKeysOut;
         [Output("Values")]
-        public ISpread<TVal> FOut;
-        [Output("Queried Values")]
-        public ISpread<ISpread<TVal>> FQueryOut;
+        public ISpread<ISpread<TVal>> FOut;
 
         private Dictionary<TKey, TVal> dict = new Dictionary<TKey, TVal>();
 
@@ -118,33 +116,43 @@ namespace mp.pddn
                     }
                 }
             }
-            FOut.SliceCount = dict.Count;
-            FKeysOut.SliceCount = dict.Count;
-            int ii = 0;
-            foreach (var kvp in dict)
+
+            if (FGetKey.IsConnected)
             {
-                FOut[ii] = kvp.Value;
-                FKeysOut[ii] = kvp.Key;
-                ii++;
+                FOut.SliceCount = FKeysOut.SliceCount = FGetKey.SliceCount;
+                for (int i = 0; i < FGetKey.SliceCount; i++)
+                {
+                    if (FGetKey[i] == null)
+                    {
+                        FOut[i].SliceCount = 0;
+                        continue;
+                    }
+
+                    if (!dict.TryGetValue(FGetKey[i], out var res))
+                    {
+                        FOut[i].SliceCount = 0;
+                        continue;
+                    }
+
+                    FKeysOut[i] = FGetKey[i];
+                    FOut[i].SliceCount = 1;
+                    FOut[i][0] = res;
+                }
+            }
+            else
+            {
+                FOut.SliceCount = dict.Count;
+                FKeysOut.SliceCount = dict.Count;
+                int ii = 0;
+                foreach (var kvp in dict)
+                {
+                    FOut[ii].SliceCount = 1;
+                    FOut[ii][0] = kvp.Value;
+                    FKeysOut[ii] = kvp.Key;
+                    ii++;
+                }
             }
 
-            FQueryOut.SliceCount = FGetKey.SliceCount;
-            for (int i = 0; i < FGetKey.SliceCount; i++)
-            {
-                if (FGetKey[i] == null)
-                {
-                    FQueryOut[i].SliceCount = 0;
-                    continue;
-                }
-                if (!dict.ContainsKey(FGetKey[i]))
-                {
-                    FQueryOut[i].SliceCount = 0;
-                    continue;
-                }
-
-                FQueryOut[i].SliceCount = 1;
-                FQueryOut[i][0] = dict[FGetKey[i]];
-            }
             FDictOut[0] = dict;
         }
 
