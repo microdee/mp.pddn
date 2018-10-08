@@ -216,8 +216,11 @@ namespace mp.pddn
             var enumerable = false;
             var dictionary = false;
             
-            var allowEnumconv = !((OptOutEnumerable?.Contains(memberType) ?? false) ||
-                                  (OptOutEnumerable?.Contains(memberType.GetGenericTypeDefinition()) ?? false));
+            var allowEnumconv = !(OptOutEnumerable?.Contains(memberType) ?? false);
+            if (allowEnumconv && memberType.IsConstructedGenericType)
+            {
+                if (OptOutEnumerable?.Contains(memberType.GetGenericTypeDefinition()) ?? false) allowEnumconv = false;
+            }
 
             if (allowEnumconv && memberType.GetInterface("IDictionary") != null)
             {

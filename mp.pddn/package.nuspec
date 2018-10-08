@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>mp.pddn</id>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
     <title>mp.pddn</title>
     <authors>David Mórász (microdee)</authors>
     <owners>David Mórász (microdee)</owners>
@@ -11,7 +11,7 @@
     <projectUrl>https://github.com/microdee/mp.pddn</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Common node patterns and utilities for VVVV</description>
-    <releaseNotes>added possibility to opt out from automatic enumerable pin conversion to ObjectSplitNode</releaseNotes>
+    <releaseNotes>forgot to add generic type definition support for enumerable optout</releaseNotes>
     <copyright>Copyright © 2017 by David Mórász</copyright>
     <tags>vvvv dynamic pins abstract nodes</tags>
   </metadata>

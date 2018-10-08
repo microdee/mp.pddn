@@ -61,6 +61,11 @@ namespace mp.pddn
         /// </remarks>
         protected StringCollection MemberBlackList;
 
+        /// <summary>
+        /// Opt out automatic enumerable conversion for these types
+        /// </summary>
+        protected HashSet<Type> OptOutEnumerable;
+
         private bool AllowMember(MemberInfo member)
         {
             if (MemberWhiteList != null && MemberWhiteList.Count > 0)
@@ -196,7 +201,14 @@ namespace mp.pddn
             var enumerable = false;
             var dictionary = false;
             var defaultValue = typeof(T).GetProperty(member.Name)?.GetValue(Default);
-            if (memberType.GetInterface("IDictionary") != null)
+
+            var allowEnumconv = !(OptOutEnumerable?.Contains(memberType) ?? false);
+            if (allowEnumconv && memberType.IsConstructedGenericType)
+            {
+                if (OptOutEnumerable?.Contains(memberType.GetGenericTypeDefinition()) ?? false) allowEnumconv = false;
+            }
+
+            if (allowEnumconv && memberType.GetInterface("IDictionary") != null)
             {
                 try
                 {
@@ -227,7 +239,7 @@ namespace mp.pddn
                     dictionary = false;
                 }
             }
-            else if (memberType.GetInterface("IEnumerable") != null && memberType != typeof(string))
+            else if (allowEnumconv && memberType.GetInterface("IEnumerable") != null && memberType != typeof(string))
             {
                 try
                 {
