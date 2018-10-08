@@ -82,6 +82,11 @@ namespace mp.pddn
         /// Expose attributes of listed types for all members. Null turns off this feature, default is null
         /// </summary>
         protected HashSet<Type> ExposeAttributes;
+        
+        /// <summary>
+        /// Opt out automatic enumerable conversion for these types
+        /// </summary>
+        protected HashSet<Type> OptOutEnumerable;
 
         /// <summary>
         /// If not null (which is by default) and not empty, only expose members present in this collection
@@ -128,7 +133,7 @@ namespace mp.pddn
         /// <returns>The resulting transformed type</returns>
         public virtual Type TransformType(Type original, MemberInfo member)
         {
-            return original;
+            return MiscExtensions.MapSystemNumericsTypeToVVVV(original);
         }
         
         protected Dictionary<MemberInfo, bool> IsMemberEnumerable = new Dictionary<MemberInfo, bool>();
@@ -211,7 +216,9 @@ namespace mp.pddn
             var enumerable = false;
             var dictionary = false;
 
-            if (memberType.GetInterface("IDictionary") != null)
+            var allowEnumconv = !(OptOutEnumerable?.Contains(memberType) ?? false);
+
+            if (allowEnumconv && memberType.GetInterface("IDictionary") != null)
             {
                 try
                 {
@@ -242,7 +249,7 @@ namespace mp.pddn
                     dictionary = false;
                 }
             }
-            else if ((memberType.GetInterface("IEnumerable") != null) && (memberType != typeof(string)))
+            else if (allowEnumconv && memberType.GetInterface("IEnumerable") != null && memberType != typeof(string))
             {
                 try
                 {
