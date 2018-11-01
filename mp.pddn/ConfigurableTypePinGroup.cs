@@ -52,6 +52,17 @@ namespace mp.pddn
             {"color", typeof(RGBAColor) }
         };
 
+        public ConfigurableTypePinGroup AddTypeMap(Type t)
+        {
+            return AddTypeMap(t.GetCSharpName(), t);
+        }
+
+        public ConfigurableTypePinGroup AddTypeMap(string alias, Type t)
+        {
+            SimplifiedTypeMapping.UpdateGeneric(alias.ToLowerInvariant(), t);
+            return this;
+        }
+
         public DiffSpreadPin AddInput(params InputAttribute[] attrs)
         {
             if(GroupType == null) throw new TypeIsNullException();
