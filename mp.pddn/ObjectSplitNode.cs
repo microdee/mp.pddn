@@ -7,41 +7,141 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Fasterflect;
 using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.Reflection;
 
 namespace mp.pddn
 {
-    public class MemberValueCache
+    public class FrameCacheState
     {
-        public ISpread Collection;
-        public ISpread Keys;
-        public object Value;
+        public long FrameCounter { get; private set; }
+        public bool Used => FrameCounter >= ObjectSplitCache.FrameCounter - 2;
+
+        public bool Wrote
+        {
+            get => FrameCounter == ObjectSplitCache.FrameCounter;
+            set
+            {
+                if (value)
+                    FrameCounter = ObjectSplitCache.FrameCounter;
+            }
+        }
     }
-    public class ObjectMemberCache
+    public class MemberValueCache : FrameCacheState
     {
-        public Dictionary<MemberInfo, MemberValueCache> MemberValues { get; } = new Dictionary<MemberInfo, MemberValueCache>();
-        public bool Used { get; set; }
-        public bool Wrote { get; set; }
+        private ISpread _collection;
+        private ISpread _keys;
+        private object _value;
+
+        public ObjectMemberCache CacheParent { get; set; }
+
+        public ISpread Collection
+        {
+            get => _collection;
+            set
+            {
+                Wrote = true;
+                _collection = value;
+            }
+        }
+        public ISpread Keys
+        {
+            get => _keys;
+            set
+            {
+                Wrote = true;
+                _keys = value;
+            }
+        }
+        public object Value
+        {
+            get => _value;
+            set
+            {
+                Wrote = true;
+                _value = value;
+            }
+        }
+
+        public MemberGetter Getter { get; set; }
+        public MemberInfo Info { get; set; }
+        
+    }
+    public class ObjectMemberCache : FrameCacheState
+    {
+        public Dictionary<string, MemberValueCache> MemberValues { get; } = new Dictionary<string, MemberValueCache>();
+
+        private object _associatedObject;
+        public object AssociatedObject
+        {
+            get => _associatedObject;
+            set
+            {
+                Wrote = true;
+                _associatedObject = value;
+            }
+        }
+
+        private Type _associatedType;
+        public Type AssociatedType
+        {
+            get => _associatedType;
+            set
+            {
+                Wrote = true;
+                _associatedType = value;
+            }
+        }
+
+        public MemberValueCache AddMember(MemberInfo member)
+        {
+            Wrote = true;
+            if (MemberValues.ContainsKey(member.Name)) return MemberValues[member.Name];
+
+            MemberGetter getter = null;
+            switch (member)
+            {
+                case PropertyInfo prop:
+                    getter = AssociatedType.DelegateForGetPropertyValue(prop.Name);
+                    break;
+                case FieldInfo field:
+                    getter = AssociatedType.DelegateForGetFieldValue(field.Name);
+                    break;
+                default:
+                    return null;
+            }
+            var res = new MemberValueCache
+            {
+                CacheParent = this,
+                Getter = getter,
+                Info = member,
+                Wrote = true
+            };
+            MemberValues.Add(member.Name, res);
+
+            return res;
+        }
+
+        public ObjectMemberCache(object target)
+        {
+            AssociatedObject = target;
+            AssociatedType = target.GetType();
+        }
     }
     public static class ObjectSplitCache
     {
         public static IHDEHost HdeHost { get; set; }
         public static Dictionary<object, ObjectMemberCache> Cache { get; } = new Dictionary<object, ObjectMemberCache>();
 
+        public static long FrameCounter = 0;
+
         public static void Initialize(IHDEHost hde)
         {
             if(HdeHost != null) return;
             HdeHost = hde;
-            HdeHost.MainLoop.OnPrepareGraph += (sender, args) =>
-            {
-                foreach (var memcache in Cache.Values)
-                {
-                    memcache.Used = false;
-                    memcache.Wrote = false;
-                }
-            };
+            HdeHost.MainLoop.OnPrepareGraph += (sender, args) => { FrameCounter++; };
             HdeHost.MainLoop.OnResetCache += (sender, args) =>
             {
                 foreach (var k in Cache.Keys.ToArray())
@@ -52,49 +152,16 @@ namespace mp.pddn
             };
         }
     }
-    /// <summary>
-    /// Generic version of expand node. Hence much quicker and output data can be transformed
-    /// </summary>
-    /// <typeparam name="T">Type of desired object</typeparam>
-    public abstract class ObjectSplitNode<T> : IPartImportsSatisfiedNotification, IPluginEvaluate
+
+    public abstract class ObjectMemberFilterBase
     {
-        [Input("Input")] public Pin<T> FInput;
-        [Import] protected IPluginHost2 FPluginHost;
-        [Import] protected IIOFactory FIOFactory;
-        [Import] protected IHDEHost HdeHost;
-
-        /// <summary>
-        /// Expose private members. Not recommended but can be used if needed
-        /// </summary>
-        protected bool ExposePrivate = false;
-
-        /// <summary>
-        /// By default object values are cached so properties and enumerables are only executed once per frame. There are situations though when caching makes things worse.
-        /// </summary>
-        protected bool UseObjectCache = true;
-
-        /// <summary>
-        /// Expose attributes of listed types for specific members. Null turns off this feature, default is null
-        /// </summary>
-        protected Dictionary<string, HashSet<Type>> ExposeMemberAttributes;
-
-        /// <summary>
-        /// Expose attributes of listed types for all members. Null turns off this feature, default is null
-        /// </summary>
-        protected HashSet<Type> ExposeAttributes;
-        
-        /// <summary>
-        /// Opt out automatic enumerable conversion for these types
-        /// </summary>
-        protected HashSet<Type> OptOutEnumerable;
-
         /// <summary>
         /// If not null (which is by default) and not empty, only expose members present in this collection
         /// </summary>
         /// <remarks>
         /// If white list is also valid, black list is ignored
         /// </remarks>
-        protected StringCollection MemberWhiteList;
+        public virtual StringCollection MemberWhiteList { get; set; }
 
         /// <summary>
         /// If not null (which is by default) and not empty, don't expose members present in this collection
@@ -102,49 +169,31 @@ namespace mp.pddn
         /// <remarks>
         /// If white list is also valid, black list is ignored
         /// </remarks>
-        protected StringCollection MemberBlackList;
-
-        public virtual void OnImportsSatisfiedBegin() { }
-        public virtual void OnImportsSatisfiedEnd() { }
-
-        public virtual void OnEvaluateBegin() { }
-        public virtual void OnEvaluateEnd() { }
-
-        public virtual void OnChangedBegin() { }
-        public virtual void OnChangedEnd() { }
+        public virtual StringCollection MemberBlackList { get; set; }
 
         /// <summary>
-        /// Transform a field or a property to a different value
+        /// Expose private members. Not recommended but can be used if needed
         /// </summary>
-        /// <param name="obj">Original value of the field / property</param>
-        /// <param name="member">Field / Property info</param>
-        /// <param name="i">Current slice</param>
-        /// <returns>The resulting transformed object</returns>
-        public virtual object TransformOutput(object obj, MemberInfo member, int i)
-        {
-            return obj;
-        }
+        public virtual bool ExposePrivate { get; set; } = false;
 
-        /// <summary>
-        /// Transform the type of a field or a property to a different one
-        /// </summary>
-        /// <param name="original">Original type of the field / property</param>
-        /// <param name="member">Field / Property info</param>
-        /// <returns>The resulting transformed type</returns>
-        public virtual Type TransformType(Type original, MemberInfo member)
+        public bool AllowMember(MemberInfo member)
         {
-            return MiscExtensions.MapSystemNumericsTypeToVVVV(original);
-        }
-        
-        protected Dictionary<MemberInfo, bool> IsMemberEnumerable = new Dictionary<MemberInfo, bool>();
-        protected Dictionary<MemberInfo, bool> IsMemberDictionary = new Dictionary<MemberInfo, bool>();
+            if (!(member is FieldInfo) && !(member is PropertyInfo)) return false;
 
-        protected Type CType;
-        protected PinDictionary Pd;
-        protected string NodePath;
+            switch (member)
+            {
+                case FieldInfo field:
+                    if (field.IsStatic) return false;
+                    if (field.FieldType.IsPointer) return false;
+                    if (!field.FieldType.IsPublic && !ExposePrivate) return false;
+                    break;
+                case PropertyInfo prop:
+                    if (!prop.CanRead) return false;
+                    if (prop.PropertyType.IsPointer) return false;
+                    if (prop.GetIndexParameters().Length > 0) return false;
+                    break;
+            }
 
-        private bool AllowMember(MemberInfo member)
-        {
             if (MemberWhiteList != null && MemberWhiteList.Count > 0)
             {
                 return MemberWhiteList.Contains(member.Name);
@@ -155,16 +204,104 @@ namespace mp.pddn
             }
             return true;
         }
+    }
 
-        private void AddMemberAttributePin(MemberInfo member)
+    public class ObjectMemberFilter : ObjectMemberFilterBase { }
+
+    /// <summary>
+    /// Non-Generic base of ObjectSplitNode
+    /// </summary>
+    public abstract class ObjectSplitNode : ObjectMemberFilterBase
+    {
+        [Output("Top Level Type", Visibility = PinVisibility.OnlyInspector)]
+        public ISpread<string> FTypeName;
+        [Output("Valid", Visibility = PinVisibility.OnlyInspector, Order = 9000)]
+        public ISpread<bool> FValid;
+
+        [Input("Nil on Null", Order = 9999, Visibility = PinVisibility.OnlyInspector)]
+        public IDiffSpread<bool> FNullMode;
+
+        [Import] protected IPluginHost2 FPluginHost;
+        [Import] protected IIOFactory FIOFactory;
+        [Import] protected IHDEHost HdeHost;
+
+        /// <summary>
+        /// By default object values are cached so properties and enumerables are only executed once per frame. There are situations though when caching makes things worse.
+        /// </summary>
+        public virtual bool UseObjectCache { get; set; } = true;
+
+        public virtual bool ManualInit { get; set; } = false;
+
+        /// <summary>
+        /// Expose attributes of listed types for specific members. Null turns off this feature, default is null
+        /// </summary>
+        public virtual Dictionary<string, HashSet<Type>> ExposeMemberAttributes { get; set; }
+
+        /// <summary>
+        /// Expose attributes of listed types for all members. Null turns off this feature, default is null
+        /// </summary>
+        public virtual HashSet<Type> ExposeAttributes { get; set; }
+
+        /// <summary>
+        /// Opt out automatic enumerable conversion for these types
+        /// </summary>
+        public virtual HashSet<Type> OptOutEnumerable { get; set; }
+
+        public virtual bool StopWatchToSeconds { get; set; } = true;
+
+        public virtual void OnImportsSatisfiedBegin() { }
+        public virtual void OnImportsSatisfiedEnd() { }
+
+        public virtual void OnEvaluateBegin() { }
+        public virtual void OnEvaluateEnd() { }
+
+        public virtual void OnChangedBegin() { }
+        public virtual void OnChangedEnd() { }
+
+        public abstract void Initialize();
+
+
+        /// <summary>
+        /// Transform a field or a property to a different value
+        /// </summary>
+        /// <param name="obj">Original value of the field / property</param>
+        /// <param name="member">Field / Property info</param>
+        /// <param name="i">Current slice</param>
+        /// <param name="stopwatchtoseconds"></param>
+        /// <returns>The resulting transformed object</returns>
+        public virtual object TransformOutput(object obj, MemberInfo member, int i)
         {
-            if(ExposeAttributes != null)
+            return MiscExtensions.MapSystemNumericsValueToVVVV(obj, StopWatchToSeconds);
+        }
+
+        /// <summary>
+        /// Transform the type of a field or a property to a different one
+        /// </summary>
+        /// <param name="original">Original type of the field / property</param>
+        /// <param name="member">Field / Property info</param>
+        /// <param name="stopwatchtoseconds"></param>
+        /// <returns>The resulting transformed type</returns>
+        public virtual Type TransformType(Type original, MemberInfo member)
+        {
+            return MiscExtensions.MapSystemNumericsTypeToVVVV(original, StopWatchToSeconds);
+        }
+
+        protected Dictionary<MemberInfo, bool> IsMemberEnumerable = new Dictionary<MemberInfo, bool>();
+        protected Dictionary<MemberInfo, bool> IsMemberDictionary = new Dictionary<MemberInfo, bool>();
+
+        protected Type CType;
+        protected PinDictionary Pd;
+        protected string NodePath;
+
+        protected void AddMemberAttributePin(MemberInfo member)
+        {
+            if (ExposeAttributes != null)
                 AddMemberAttributePin(member, ExposeAttributes);
-            if(ExposeMemberAttributes != null && ExposeMemberAttributes.ContainsKey(member.Name))
+            if (ExposeMemberAttributes != null && ExposeMemberAttributes.ContainsKey(member.Name))
                 AddMemberAttributePin(member, ExposeMemberAttributes[member.Name]);
         }
 
-        private void AddMemberAttributePin(MemberInfo member, IEnumerable<Type> desiredattrtypes)
+        protected void AddMemberAttributePin(MemberInfo member, IEnumerable<Type> desiredattrtypes)
         {
             foreach (var attrtype in desiredattrtypes)
             {
@@ -177,7 +314,7 @@ namespace mp.pddn
                 {
                     continue;
                 }
-                if(validattrs.Length == 0) continue;
+                if (validattrs.Length == 0) continue;
                 var pin = Pd.AddOutput(TransformType(attrtype, member), new OutputAttribute(member.Name + " " + attrtype.GetCSharpName())
                 {
                     Visibility = PinVisibility.OnlyInspector
@@ -190,32 +327,23 @@ namespace mp.pddn
             }
         }
 
-        private void AddMemberPin(MemberInfo member)
+        protected void AddMemberPin(MemberInfo member)
         {
-            if (!(member is FieldInfo) && !(member is PropertyInfo)) return;
-            if(!AllowMember(member)) return;
+            if (!AllowMember(member)) return;
 
             Type memberType = typeof(object);
             switch (member)
             {
                 case FieldInfo field:
-                    if (field.IsStatic) return;
-                    if (field.FieldType.IsPointer) return;
-                    if (!field.FieldType.IsPublic && !ExposePrivate) return;
-
                     memberType = field.FieldType;
                     break;
                 case PropertyInfo prop:
-                    if (!prop.CanRead) return;
-                    if (prop.PropertyType.IsPointer) return;
-                    if (prop.GetIndexParameters().Length > 0) return;
-
                     memberType = prop.PropertyType;
                     break;
             }
             var enumerable = false;
             var dictionary = false;
-            
+
             var allowEnumconv = !(OptOutEnumerable?.Contains(memberType) ?? false);
             if (allowEnumconv && memberType.IsConstructedGenericType)
             {
@@ -293,32 +421,34 @@ namespace mp.pddn
             IsMemberDictionary.Add(member, dictionary);
         }
 
-        private ObjectMemberCache InitializeObjectCache(object input)
+        protected ObjectMemberCache InitializeObjectCache(object input)
         {
-            var res = new ObjectMemberCache();
+            var res = new ObjectMemberCache(input);
             ObjectSplitCache.Cache.Add(input, res);
             return res;
         }
-        private MemberValueCache InitializeCachedValue(MemberInfo member, ObjectMemberCache memberCache)
+        protected MemberValueCache InitializeCachedValue(MemberInfo member, ObjectMemberCache memberCache)
         {
-            var res = new MemberValueCache();
-            memberCache.MemberValues.Add(member, res);
+            var res = memberCache.AddMember(member);
             return res;
         }
 
-        private void AssignMemberValue(MemberInfo member, object input, int i, MemberValueCache valueCache)
+        protected object GetMemberValue(MemberInfo member, object target)
         {
-            object memberValue = null;
             switch (member)
             {
-                case FieldInfo field:
-                    memberValue = field.GetValue(input);
-                    break;
                 case PropertyInfo prop:
-                    memberValue = prop.GetValue(input);
-                    break;
-                default: return;
+                    return prop.GetValue(target);
+                case FieldInfo field:
+                    return field.GetValue(target);
+                default:
+                    return null;
             }
+        }
+
+        protected void AssignMemberValue(MemberInfo member, object input, int i, MemberValueCache valueCache)
+        {
+            object memberValue = valueCache != null ? valueCache.Getter(input) : GetMemberValue(member, input);
 
             if (IsMemberDictionary[member])
             {
@@ -337,7 +467,7 @@ namespace mp.pddn
                     valuespread.SliceCount++;
                     valuespread[-1] = TransformOutput(v, member, i);
                 }
-                if(valueCache != null)
+                if (valueCache != null)
                 {
                     valueCache.Collection = valuespread;
                     valueCache.Keys = keyspread;
@@ -367,7 +497,7 @@ namespace mp.pddn
             }
         }
 
-        private void ReadCachedMemberValue(MemberInfo member, int i, MemberValueCache valueCache)
+        protected void ReadCachedMemberValue(MemberInfo member, int i, MemberValueCache valueCache)
         {
             if (IsMemberDictionary[member])
             {
@@ -383,21 +513,53 @@ namespace mp.pddn
                 Pd.OutputPins[member.Name][i] = valueCache.Value;
             }
         }
+    }
+
+    /// <summary>
+    /// Generic version of expand node. Hence much quicker and output data can be transformed
+    /// </summary>
+    /// <typeparam name="TObj">Type of desired object</typeparam>
+    public abstract class ObjectSplitNode<TObj> : ObjectSplitNode, IPartImportsSatisfiedNotification, IPluginEvaluate
+    {
+        [Input("Input")] public Pin<TObj> FInput;
+
+        public virtual bool IsChanged()
+        {
+            return FInput.IsChanged;
+        }
 
         public void OnImportsSatisfied()
+        {
+            if(!ManualInit) Initialize();
+        }
+
+        public override void Initialize()
         {
             NodePath = FPluginHost.GetNodePath(false);
             if (UseObjectCache)
                 ObjectSplitCache.Initialize(HdeHost);
             Pd = new PinDictionary(FIOFactory);
-            CType = typeof(T);
+            CType = typeof(TObj);
 
             OnImportsSatisfiedBegin();
 
-            foreach (var field in CType.GetFields())
-                AddMemberPin(field);
-            foreach (var prop in CType.GetProperties())
-                AddMemberPin(prop);
+            if (CType.IsInterface)
+            {
+                IEnumerable<PropertyInfo> props = CType.GetProperties();
+                foreach (var iif in CType.GetInterfaces())
+                {
+                    props = props.Concat(iif.GetProperties());
+                }
+                foreach (var prop in props)
+                    AddMemberPin(prop);
+            }
+            else
+            {
+                foreach (var field in CType.GetFields())
+                    AddMemberPin(field);
+                foreach (var prop in CType.GetProperties())
+                    AddMemberPin(prop);
+            }
 
             OnImportsSatisfiedEnd();
         }
@@ -415,22 +577,14 @@ namespace mp.pddn
                 return;
             }
 
-            if (FInput[0] == null)
-            {
-                OnEvaluateEnd();
-                return;
-            }
             var sprmax = FInput.SliceCount;
-            if(UseObjectCache)
+            if (sprmax > 0 && FNullMode[0] && FInput[0] == null)
             {
-                foreach (var input in FInput)
-                {
-                    if (ObjectSplitCache.Cache.ContainsKey(input))
-                        ObjectSplitCache.Cache[input].Used = true;
-                }
+                sprmax = 0;
             }
-            if (FInput.IsChanged)
+            if (IsChanged() || FNullMode.IsChanged)
             {
+                FTypeName.SliceCount = FValid.SliceCount = sprmax;
                 OnChangedBegin();
                 foreach (var pin in Pd.OutputPins.Values)
                 {
@@ -439,19 +593,38 @@ namespace mp.pddn
                 for (int i = 0; i < sprmax; i++)
                 {
                     var obj = FInput[i];
-                    if (obj == null) continue;
+                    FTypeName[i] = obj?.GetType().AssemblyQualifiedName ?? "";
+                    if (obj == null)
+                    {
+                        FValid[i] = false;
+                        continue;
+                    }
+                    FValid[i] = true;
                     if (UseObjectCache && ObjectSplitCache.Cache.ContainsKey(obj))
                     {
                         var objCache = ObjectSplitCache.Cache[obj];
                         foreach (var member in IsMemberEnumerable.Keys)
                         {
-                            if(objCache.Wrote)
-                                ReadCachedMemberValue(member, i, objCache.MemberValues[member]);
+                            if (objCache.MemberValues.ContainsKey(member.Name))
+                            {
+                                var memberCache = objCache.MemberValues[member.Name];
+                                if (memberCache.Wrote)
+                                {
+                                    ReadCachedMemberValue(member, i, memberCache);
+                                }
+                                else
+                                {
+                                    AssignMemberValue(member, obj, i, memberCache);
+                                    memberCache.Wrote = true;
+                                    objCache.Wrote = true;
+                                }
+                            }
                             else
-                                AssignMemberValue(member, obj, i, objCache.MemberValues[member]);
+                            {
+                                var memberCache = objCache.AddMember(member);
+                                AssignMemberValue(member, obj, i, memberCache);
+                            }
                         }
-                        objCache.Used = true;
-                        objCache.Wrote = true;
                     }
                     else if(UseObjectCache)
                     {
@@ -460,8 +633,8 @@ namespace mp.pddn
                         {
                             var memberCache = InitializeCachedValue(member, objCache);
                             AssignMemberValue(member, obj, i, memberCache);
+                            memberCache.Wrote = true;
                         }
-                        objCache.Used = true;
                         objCache.Wrote = true;
                     }
                     else

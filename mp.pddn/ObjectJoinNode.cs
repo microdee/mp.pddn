@@ -5,12 +5,18 @@ using System.Collections.Specialized;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Reflection;
-using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using SlimDX;
 using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.Reflection;
+using VVVV.Utils.VColor;
+using VVVV.Utils.VMath;
+using Quaternion = System.Numerics.Quaternion;
+using Vector2 = System.Numerics.Vector2;
+using Vector3 = System.Numerics.Vector3;
+using Vector4 = System.Numerics.Vector4;
 
 namespace mp.pddn
 {
@@ -27,8 +33,11 @@ namespace mp.pddn
     }
 
     /// <summary>
-    /// Abstract node allowing you to simply create object instances
+    /// Abstract node allowing you to simply create object instances. Although you have to delegate them to vvvv.
     /// </summary>
+    /// <remarks>
+    /// This abstract node doesn't present the object to vvvv, the implementer have to do that.
+    /// </remarks>
     /// <typeparam name="T"></typeparam>
     public abstract class ObjectJoinNode<T> : IPartImportsSatisfiedNotification
     {
@@ -134,21 +143,33 @@ namespace mp.pddn
                 case ulong v: return new[] { (double)v };
                 case decimal v: return new[] { (double)v };
                 case Vector2 v:
-                    {
-                        return new double[] { v.X, v.Y };
-                    }
+                {
+                    return new double[] { v.X, v.Y };
+                }
                 case Vector3 v:
-                    {
-                        return new double[] { v.X, v.Y, v.Z };
-                    }
+                {
+                    return new double[] { v.X, v.Y, v.Z };
+                }
                 case Vector4 v:
-                    {
-                        return new double[] { v.X, v.Y, v.Z, v.W };
-                    }
+                {
+                    return new double[] { v.X, v.Y, v.Z, v.W };
+                }
                 case Quaternion v:
-                    {
-                        return new double[] { v.X, v.Y, v.Z, v.W };
-                    }
+                {
+                    return new double[] { v.X, v.Y, v.Z, v.W };
+                }
+                case Vector2D v:
+                {
+                    return new double[] { v.x, v.y };
+                }
+                case Vector3D v:
+                {
+                    return new double[] { v.x, v.y, v.z };
+                }
+                case Vector4D v:
+                {
+                    return new double[] { v.x, v.y, v.z, v.w };
+                }
                 default: return new[] { 0.0 };
             }
         }
@@ -164,13 +185,14 @@ namespace mp.pddn
             return MiscExtensions.MapSystemNumericsTypeToVVVV(original);
         }
 
-        protected Dictionary<PropertyInfo, bool> IsMemberEnumerable = new Dictionary<PropertyInfo, bool>();
-        protected Dictionary<PropertyInfo, bool> IsMemberDictionary = new Dictionary<PropertyInfo, bool>();
+        protected readonly List<PropertyInfo> Properties = new List<PropertyInfo>();
+        protected readonly Dictionary<PropertyInfo, bool> IsMemberEnumerable = new Dictionary<PropertyInfo, bool>();
+        protected readonly Dictionary<PropertyInfo, bool> IsMemberDictionary = new Dictionary<PropertyInfo, bool>();
 
         protected Type CType;
         protected PinDictionary Pd;
 
-        private void SetDefaultValue(PropertyInfo member, object defaultValue)
+        private void AddPinAndSetDefaultValue(PropertyInfo member, object defaultValue)
         {
             var defVals = TransformDefaultToValues(defaultValue);
             var attr = new InputAttribute(member.Name)
@@ -181,6 +203,9 @@ namespace mp.pddn
                 DefaultNodeValue = defaultValue
             };
             if (defaultValue is bool b) attr.DefaultBoolean = b;
+            if (defaultValue is RGBAColor vcol) attr.DefaultColor = new []{ vcol.R, vcol.G, vcol.B, vcol.A };
+            if (defaultValue is Color4 s4Col) attr.DefaultColor = new double[] { s4Col.Red, s4Col.Green, s4Col.Blue, s4Col.Alpha };
+            if (defaultValue is Color3 s3Col) attr.DefaultColor = new double[] { s3Col.Red, s3Col.Green, s3Col.Blue, 1 };
 
             Pd.AddInput(TransformType(member.PropertyType, member), attr);
             var spread = Pd.InputPins[member.Name].Spread;
@@ -194,9 +219,12 @@ namespace mp.pddn
             if (!AllowMember(member)) return;
 
             if (!member.CanRead) return;
+            if (!member.CanWrite) return;
             if (member.GetIndexParameters().Length > 0) return;
 
             memberType = member.PropertyType;
+
+            Properties.Add(member);
 
             var enumerable = false;
             var dictionary = false;
@@ -229,13 +257,13 @@ namespace mp.pddn
                             }
                         })
                         .First().GenericTypeArguments;
-                    Pd.AddInput(TransformType(stype[0], member), new InputAttribute(member.Name + " Keys"), binSized: true);
-                    Pd.AddInput(TransformType(stype[1], member), new InputAttribute(member.Name + " Values"), binSized: true);
+                    Pd.AddInput(TransformType(stype[0], member), new InputAttribute(member.Name + " Keys"), binSized: true, obj: member);
+                    Pd.AddInput(TransformType(stype[1], member), new InputAttribute(member.Name + " Values"), binSized: true, obj: member);
                     dictionary = true;
                 }
                 catch (Exception)
                 {
-                    Pd.AddInput(TransformType(memberType, member), new InputAttribute(member.Name));
+                    AddPinAndSetDefaultValue(member, defaultValue);
                     dictionary = false;
                 }
             }
@@ -260,23 +288,30 @@ namespace mp.pddn
                             }
                         })
                         .First().GenericTypeArguments[0];
-                    Pd.AddInput(TransformType(stype, member), new InputAttribute(member.Name), binSized: true);
+                    Pd.AddInput(TransformType(stype, member), new InputAttribute(member.Name), binSized: true, obj: member);
                     enumerable = true;
                 }
                 catch (Exception)
                 {
-                    Pd.AddInput(TransformType(memberType, member), new InputAttribute(member.Name));
-                    SetDefaultValue(member, defaultValue);
+                    AddPinAndSetDefaultValue(member, defaultValue);
                     enumerable = false;
                 }
             }
             else
             {
-                SetDefaultValue(member, defaultValue);
+                AddPinAndSetDefaultValue(member, defaultValue);
                 enumerable = false;
             }
             IsMemberEnumerable.Add(member, enumerable);
             IsMemberDictionary.Add(member, dictionary);
+        }
+
+        protected void FillObject(T obj, int i)
+        {
+            foreach (var prop in Properties)
+            {
+                FillObject(prop, obj, i);
+            }
         }
 
         protected void FillObject(PropertyInfo member, T obj, int i)
@@ -322,6 +357,7 @@ namespace mp.pddn
 
             OnImportsSatisfiedBegin();
 
+            Properties.Clear();
             foreach (var prop in CType.GetProperties().Where(p => p.CanWrite))
                 AddMemberPin(prop);
 

@@ -40,6 +40,10 @@ namespace mp.pddn
             {
                 return typeof(double);
             }
+            if (original == typeof(TimeSpan))
+            {
+                return typeof(double);
+            }
             return original;
         }
 
@@ -66,6 +70,10 @@ namespace mp.pddn
                 case SMatrix v:
                 {
                     return v.AsVMatrix4X4();
+                }
+                case TimeSpan ts:
+                {
+                    return ts.TotalSeconds;
                 }
                 case Stopwatch s:
                 {
