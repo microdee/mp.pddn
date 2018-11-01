@@ -163,6 +163,7 @@ namespace mp.pddn
     {
         /// <inheritdoc />
         public IIOContainer IOContainer { get; set; }
+        public object MemoryIOStream { get; }
 
         /// <summary></summary>
         /// <param name="spread"></param>
@@ -171,6 +172,17 @@ namespace mp.pddn
         public SpreadPin(ISpread spread, IOAttribute attr, IIOContainer ioc) : base(spread, attr)
         {
             IOContainer = ioc;
+            MemoryIOStream = ioc.GetType().GetProperty("Stream")?.GetValue(ioc);
+        }
+
+        public void SetReflectedChanged(bool changed)
+        {
+            MemoryIOStream?.GetType().GetProperty("IsChanged")?.SetValue(MemoryIOStream, changed);
+        }
+
+        public bool GetReflectedChanged()
+        {
+            return (MemoryIOStream?.GetType().GetProperty("IsChanged")?.GetValue(MemoryIOStream) as bool?) ?? true;
         }
     }
 
