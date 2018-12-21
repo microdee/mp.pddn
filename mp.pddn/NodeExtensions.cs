@@ -33,6 +33,34 @@ namespace mp.pddn
         }
 
         /// <summary>
+        /// If slicecount is above 0 just getslice, otherwise return default of T
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="Ts"></typeparam>
+        /// <param name="spread"></param>
+        /// <param name="i"></param>
+        /// <returns></returns>
+        public static T TryGetSlice<T>(this ISpread<T> spread, int i)
+        {
+            return spread.SliceCount > 0 ? spread[i] : default(T);
+        }
+
+        /// <summary>
+        /// If slicecount is above 0 just getslice, otherwise return default of T
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="Ts"></typeparam>
+        /// <param name="spread"></param>
+        /// <param name="i"></param>
+        /// <param name="j"></param>
+        /// <returns></returns>
+        public static T TryGetSlice<T>(this ISpread<ISpread<T>> spread, int i, int j)
+        {
+            if (spread.SliceCount == 0) return default(T);
+            return spread[i].SliceCount > 0 ? spread[i][j] : default(T);
+        }
+
+        /// <summary>
         /// Convenience function to get all the output pins defined in the plugin class
         /// </summary>
         /// <param name="node">Current node</param>
