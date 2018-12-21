@@ -32,62 +32,8 @@ namespace mp.pddn
         }
     }
 
-    /// <summary>
-    /// Abstract node allowing you to simply create object instances. Although you have to delegate them to vvvv.
-    /// </summary>
-    /// <remarks>
-    /// This abstract node doesn't present the object to vvvv, the implementer have to do that.
-    /// </remarks>
-    /// <typeparam name="T"></typeparam>
-    public abstract class ObjectJoinNode<T> : IPartImportsSatisfiedNotification
+    public abstract class ObjectJoinNode : ObjectHandlerNodeBase
     {
-        //[Output("Output")] public Pin<T> FOutput;
-
-        [Import] protected IPluginHost2 FPluginHost;
-        [Import] protected IIOFactory FIOFactory;
-
-        protected bool ExposePrivate = false;
-        protected T Default;
-
-        public virtual void OnImportsSatisfiedBegin() { }
-        public virtual void OnImportsSatisfiedEnd() { }
-
-        protected abstract T CreateObject();
-        
-        /// <summary>
-        /// If not null (which is by default) and not empty, only expose members present in this collection
-        /// </summary>
-        /// <remarks>
-        /// If white list is also valid, black list is ignored
-        /// </remarks>
-        protected StringCollection MemberWhiteList;
-
-        /// <summary>
-        /// If not null (which is by default) and not empty, don't expose members present in this collection
-        /// </summary>
-        /// <remarks>
-        /// If white list is also valid, black list is ignored
-        /// </remarks>
-        protected StringCollection MemberBlackList;
-
-        /// <summary>
-        /// Opt out automatic enumerable conversion for these types
-        /// </summary>
-        protected HashSet<Type> OptOutEnumerable;
-
-        private bool AllowMember(MemberInfo member)
-        {
-            if (MemberWhiteList != null && MemberWhiteList.Count > 0)
-            {
-                return MemberWhiteList.Contains(member.Name);
-            }
-            if (MemberBlackList != null && MemberBlackList.Count > 0)
-            {
-                return !MemberBlackList.Contains(member.Name);
-            }
-            return true;
-        }
-
         /// <summary>
         /// If an input property is IEnumerable, please specify how to clear it
         /// </summary>
@@ -143,33 +89,33 @@ namespace mp.pddn
                 case ulong v: return new[] { (double)v };
                 case decimal v: return new[] { (double)v };
                 case Vector2 v:
-                {
-                    return new double[] { v.X, v.Y };
-                }
+                    {
+                        return new double[] { v.X, v.Y };
+                    }
                 case Vector3 v:
-                {
-                    return new double[] { v.X, v.Y, v.Z };
-                }
+                    {
+                        return new double[] { v.X, v.Y, v.Z };
+                    }
                 case Vector4 v:
-                {
-                    return new double[] { v.X, v.Y, v.Z, v.W };
-                }
+                    {
+                        return new double[] { v.X, v.Y, v.Z, v.W };
+                    }
                 case Quaternion v:
-                {
-                    return new double[] { v.X, v.Y, v.Z, v.W };
-                }
+                    {
+                        return new double[] { v.X, v.Y, v.Z, v.W };
+                    }
                 case Vector2D v:
-                {
-                    return new double[] { v.x, v.y };
-                }
+                    {
+                        return new double[] { v.x, v.y };
+                    }
                 case Vector3D v:
-                {
-                    return new double[] { v.x, v.y, v.z };
-                }
+                    {
+                        return new double[] { v.x, v.y, v.z };
+                    }
                 case Vector4D v:
-                {
-                    return new double[] { v.x, v.y, v.z, v.w };
-                }
+                    {
+                        return new double[] { v.x, v.y, v.z, v.w };
+                    }
                 default: return new[] { 0.0 };
             }
         }
@@ -186,120 +132,86 @@ namespace mp.pddn
         }
 
         protected readonly List<PropertyInfo> Properties = new List<PropertyInfo>();
-        protected readonly Dictionary<PropertyInfo, bool> IsMemberEnumerable = new Dictionary<PropertyInfo, bool>();
-        protected readonly Dictionary<PropertyInfo, bool> IsMemberDictionary = new Dictionary<PropertyInfo, bool>();
 
-        protected Type CType;
-        protected PinDictionary Pd;
-
-        private void AddPinAndSetDefaultValue(PropertyInfo member, object defaultValue)
+        protected void AddPinAndSetDefaultValue(PropertyInfo member, InputAttribute iattr, object defaultValue)
         {
             var defVals = TransformDefaultToValues(defaultValue);
-            var attr = new InputAttribute(member.Name)
-            {
-                DefaultValue = defVals[0],
-                DefaultValues = defVals,
-                DefaultString = defaultValue?.ToString() ?? "",
-                DefaultNodeValue = defaultValue
-            };
-            if (defaultValue is bool b) attr.DefaultBoolean = b;
-            if (defaultValue is RGBAColor vcol) attr.DefaultColor = new []{ vcol.R, vcol.G, vcol.B, vcol.A };
-            if (defaultValue is Color4 s4Col) attr.DefaultColor = new double[] { s4Col.Red, s4Col.Green, s4Col.Blue, s4Col.Alpha };
-            if (defaultValue is Color3 s3Col) attr.DefaultColor = new double[] { s3Col.Red, s3Col.Green, s3Col.Blue, 1 };
+            iattr.Name = member.Name;
+            iattr.DefaultValue = defVals[0];
+            iattr.DefaultValues = defVals;
+            iattr.DefaultString = defaultValue?.ToString() ?? "";
+            iattr.DefaultNodeValue = defaultValue;
 
-            Pd.AddInput(TransformType(member.PropertyType, member), attr);
+            if (defaultValue is bool b) iattr.DefaultBoolean = b;
+            if (defaultValue is RGBAColor vcol) iattr.DefaultColor = new[] { vcol.R, vcol.G, vcol.B, vcol.A };
+            if (defaultValue is Color4 s4Col) iattr.DefaultColor = new double[] { s4Col.Red, s4Col.Green, s4Col.Blue, s4Col.Alpha };
+            if (defaultValue is Color3 s3Col) iattr.DefaultColor = new double[] { s3Col.Red, s3Col.Green, s3Col.Blue, 1 };
+
+            Pd.AddInput(TransformType(member.PropertyType, member), iattr);
             var spread = Pd.InputPins[member.Name].Spread;
             spread.SliceCount = 1;
             spread[0] = TransformDefaultValue(defaultValue, member);
         }
+    }
+
+    /// <summary>
+    /// Abstract node allowing you to simply create object instances. Although you have to delegate them to vvvv.
+    /// </summary>
+    /// <remarks>
+    /// This abstract node doesn't present the object to vvvv, the implementer have to do that.
+    /// </remarks>
+    /// <typeparam name="T"></typeparam>
+    public abstract class ObjectJoinNode<T> : ObjectJoinNode, IPartImportsSatisfiedNotification
+    {
+        //[Output("Output")] public Pin<T> FOutput;
+
+        [Import] protected IPluginHost2 FPluginHost;
+        [Import] protected IIOFactory FIOFactory;
+        
+        protected T Default;
+
+        public virtual void OnImportsSatisfiedBegin() { }
+        public virtual void OnImportsSatisfiedEnd() { }
+
+        protected abstract T CreateObject();
 
         private void AddMemberPin(PropertyInfo member)
         {
-            Type memberType = typeof(object);
             if (!AllowMember(member)) return;
-
-            if (!member.CanRead) return;
             if (!member.CanWrite) return;
-            if (member.GetIndexParameters().Length > 0) return;
 
-            memberType = member.PropertyType;
-
+            var memberType = member.PropertyType;
             Properties.Add(member);
+
+            var iattr = MemberAttributeHandler<InputAttribute>(member);
 
             var enumerable = false;
             var dictionary = false;
             var defaultValue = typeof(T).GetProperty(member.Name)?.GetValue(Default);
 
-            var allowEnumconv = !(OptOutEnumerable?.Contains(memberType) ?? false);
-            if (allowEnumconv && memberType.IsConstructedGenericType)
-            {
-                if (OptOutEnumerable?.Contains(memberType.GetGenericTypeDefinition()) ?? false) allowEnumconv = false;
-            }
+            var allowEnumconv = AllowEnumBinsizing(member, memberType);
 
-            if (allowEnumconv && memberType.GetInterface("IDictionary") != null)
+            GetEnumerableGenerics(member, memberType, out var potentialGenDictT, out var potentialGenEnumT);
+
+            if (allowEnumconv && potentialGenDictT != null)
             {
-                try
-                {
-                    var interfaces = memberType.GetInterfaces().ToList();
-                    interfaces.Add(memberType);
-                    var stype = interfaces
-                        .Where(type =>
-                        {
-                            try
-                            {
-                                var res = type.GetGenericTypeDefinition();
-                                if (res == null) return false;
-                                return res == typeof(IDictionary<,>);
-                            }
-                            catch (Exception)
-                            {
-                                return false;
-                            }
-                        })
-                        .First().GenericTypeArguments;
-                    Pd.AddInput(TransformType(stype[0], member), new InputAttribute(member.Name + " Keys"), binSized: true, obj: member);
-                    Pd.AddInput(TransformType(stype[1], member), new InputAttribute(member.Name + " Values"), binSized: true, obj: member);
-                    dictionary = true;
-                }
-                catch (Exception)
-                {
-                    AddPinAndSetDefaultValue(member, defaultValue);
-                    dictionary = false;
-                }
+                var stype = potentialGenDictT.GenericTypeArguments;
+                iattr.Name = member.Name + " Values";
+                var kattr = (InputAttribute)iattr.Clone();
+                kattr.Name = member.Name + " Keys";
+                Pd.AddInput(TransformType(stype[0], member), kattr, binSized: true, obj: member);
+                Pd.AddInput(TransformType(stype[1], member), iattr, binSized: true, obj: member);
+                dictionary = true;
             }
-            else if (allowEnumconv && memberType.GetInterface("IEnumerable") != null && memberType != typeof(string))
+            else if (allowEnumconv && potentialGenEnumT != null)
             {
-                try
-                {
-                    var interfaces = memberType.GetInterfaces().ToList();
-                    interfaces.Add(memberType);
-                    var stype = interfaces
-                        .Where(type =>
-                        {
-                            try
-                            {
-                                var res = type.GetGenericTypeDefinition();
-                                if (res == null) return false;
-                                return res == typeof(IEnumerable<>);
-                            }
-                            catch (Exception)
-                            {
-                                return false;
-                            }
-                        })
-                        .First().GenericTypeArguments[0];
-                    Pd.AddInput(TransformType(stype, member), new InputAttribute(member.Name), binSized: true, obj: member);
-                    enumerable = true;
-                }
-                catch (Exception)
-                {
-                    AddPinAndSetDefaultValue(member, defaultValue);
-                    enumerable = false;
-                }
+                var stype = potentialGenEnumT.GenericTypeArguments[0];
+                Pd.AddInput(TransformType(stype, member), iattr, binSized: true, obj: member);
+                enumerable = true;
             }
             else
             {
-                AddPinAndSetDefaultValue(member, defaultValue);
+                AddPinAndSetDefaultValue(member, iattr, defaultValue);
                 enumerable = false;
             }
             IsMemberEnumerable.Add(member, enumerable);

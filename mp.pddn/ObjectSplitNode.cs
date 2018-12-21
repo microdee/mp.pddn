@@ -7,211 +7,16 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Fasterflect;
 using VVVV.PluginInterfaces.V2;
 using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.Reflection;
 
 namespace mp.pddn
 {
-    public class FrameCacheState
-    {
-        public long FrameCounter { get; private set; }
-        public bool Used => FrameCounter >= ObjectSplitCache.FrameCounter - 2;
-
-        public bool Wrote
-        {
-            get => FrameCounter == ObjectSplitCache.FrameCounter;
-            set
-            {
-                if (value)
-                    FrameCounter = ObjectSplitCache.FrameCounter;
-            }
-        }
-    }
-    public class MemberValueCache : FrameCacheState
-    {
-        private ISpread _collection;
-        private ISpread _keys;
-        private object _value;
-
-        public ObjectMemberCache CacheParent { get; set; }
-
-        public ISpread Collection
-        {
-            get => _collection;
-            set
-            {
-                Wrote = true;
-                _collection = value;
-            }
-        }
-        public ISpread Keys
-        {
-            get => _keys;
-            set
-            {
-                Wrote = true;
-                _keys = value;
-            }
-        }
-        public object Value
-        {
-            get => _value;
-            set
-            {
-                Wrote = true;
-                _value = value;
-            }
-        }
-
-        public MemberGetter Getter { get; set; }
-        public MemberInfo Info { get; set; }
-        
-    }
-    public class ObjectMemberCache : FrameCacheState
-    {
-        public Dictionary<string, MemberValueCache> MemberValues { get; } = new Dictionary<string, MemberValueCache>();
-
-        private object _associatedObject;
-        public object AssociatedObject
-        {
-            get => _associatedObject;
-            set
-            {
-                Wrote = true;
-                _associatedObject = value;
-            }
-        }
-
-        private Type _associatedType;
-        public Type AssociatedType
-        {
-            get => _associatedType;
-            set
-            {
-                Wrote = true;
-                _associatedType = value;
-            }
-        }
-
-        public MemberValueCache AddMember(MemberInfo member)
-        {
-            Wrote = true;
-            if (MemberValues.ContainsKey(member.Name)) return MemberValues[member.Name];
-
-            MemberGetter getter = null;
-            switch (member)
-            {
-                case PropertyInfo prop:
-                    getter = AssociatedType.DelegateForGetPropertyValue(prop.Name);
-                    break;
-                case FieldInfo field:
-                    getter = AssociatedType.DelegateForGetFieldValue(field.Name);
-                    break;
-                default:
-                    return null;
-            }
-            var res = new MemberValueCache
-            {
-                CacheParent = this,
-                Getter = getter,
-                Info = member,
-                Wrote = true
-            };
-            MemberValues.Add(member.Name, res);
-
-            return res;
-        }
-
-        public ObjectMemberCache(object target)
-        {
-            AssociatedObject = target;
-            AssociatedType = target.GetType();
-        }
-    }
-    public static class ObjectSplitCache
-    {
-        public static IHDEHost HdeHost { get; set; }
-        public static Dictionary<object, ObjectMemberCache> Cache { get; } = new Dictionary<object, ObjectMemberCache>();
-
-        public static long FrameCounter = 0;
-
-        public static void Initialize(IHDEHost hde)
-        {
-            if(HdeHost != null) return;
-            HdeHost = hde;
-            HdeHost.MainLoop.OnPrepareGraph += (sender, args) => { FrameCounter++; };
-            HdeHost.MainLoop.OnResetCache += (sender, args) =>
-            {
-                foreach (var k in Cache.Keys.ToArray())
-                {
-                    if(Cache[k].Used) continue;
-                    Cache.Remove(k);
-                }
-            };
-        }
-    }
-
-    public abstract class ObjectMemberFilterBase
-    {
-        /// <summary>
-        /// If not null (which is by default) and not empty, only expose members present in this collection
-        /// </summary>
-        /// <remarks>
-        /// If white list is also valid, black list is ignored
-        /// </remarks>
-        public virtual StringCollection MemberWhiteList { get; set; }
-
-        /// <summary>
-        /// If not null (which is by default) and not empty, don't expose members present in this collection
-        /// </summary>
-        /// <remarks>
-        /// If white list is also valid, black list is ignored
-        /// </remarks>
-        public virtual StringCollection MemberBlackList { get; set; }
-
-        /// <summary>
-        /// Expose private members. Not recommended but can be used if needed
-        /// </summary>
-        public virtual bool ExposePrivate { get; set; } = false;
-
-        public bool AllowMember(MemberInfo member)
-        {
-            if (!(member is FieldInfo) && !(member is PropertyInfo)) return false;
-
-            switch (member)
-            {
-                case FieldInfo field:
-                    if (field.IsStatic) return false;
-                    if (field.FieldType.IsPointer) return false;
-                    if (!field.FieldType.IsPublic && !ExposePrivate) return false;
-                    break;
-                case PropertyInfo prop:
-                    if (!prop.CanRead) return false;
-                    if (prop.PropertyType.IsPointer) return false;
-                    if (prop.GetIndexParameters().Length > 0) return false;
-                    break;
-            }
-
-            if (MemberWhiteList != null && MemberWhiteList.Count > 0)
-            {
-                return MemberWhiteList.Contains(member.Name);
-            }
-            if (MemberBlackList != null && MemberBlackList.Count > 0)
-            {
-                return !MemberBlackList.Contains(member.Name);
-            }
-            return true;
-        }
-    }
-
-    public class ObjectMemberFilter : ObjectMemberFilterBase { }
-
     /// <summary>
     /// Non-Generic base of ObjectSplitNode
     /// </summary>
-    public abstract class ObjectSplitNode : ObjectMemberFilterBase
+    public abstract class ObjectSplitNode : ObjectHandlerNodeBase
     {
         [Output("Top Level Type", Visibility = PinVisibility.OnlyInspector)]
         public ISpread<string> FTypeName;
@@ -242,13 +47,6 @@ namespace mp.pddn
         /// </summary>
         public virtual HashSet<Type> ExposeAttributes { get; set; }
 
-        /// <summary>
-        /// Opt out automatic enumerable conversion for these types
-        /// </summary>
-        public virtual HashSet<Type> OptOutEnumerable { get; set; }
-
-        public virtual bool StopWatchToSeconds { get; set; } = true;
-
         public virtual void OnImportsSatisfiedBegin() { }
         public virtual void OnImportsSatisfiedEnd() { }
 
@@ -259,7 +57,9 @@ namespace mp.pddn
         public virtual void OnChangedEnd() { }
 
         public abstract void Initialize();
+        protected string NodePath;
 
+        public virtual bool StopWatchToSeconds { get; set; } = true;
 
         /// <summary>
         /// Transform a field or a property to a different value
@@ -279,19 +79,11 @@ namespace mp.pddn
         /// </summary>
         /// <param name="original">Original type of the field / property</param>
         /// <param name="member">Field / Property info</param>
-        /// <param name="stopwatchtoseconds"></param>
         /// <returns>The resulting transformed type</returns>
         public virtual Type TransformType(Type original, MemberInfo member)
         {
             return MiscExtensions.MapSystemNumericsTypeToVVVV(original, StopWatchToSeconds);
         }
-
-        protected Dictionary<MemberInfo, bool> IsMemberEnumerable = new Dictionary<MemberInfo, bool>();
-        protected Dictionary<MemberInfo, bool> IsMemberDictionary = new Dictionary<MemberInfo, bool>();
-
-        protected Type CType;
-        protected PinDictionary Pd;
-        protected string NodePath;
 
         protected void AddMemberAttributePin(MemberInfo member)
         {
@@ -330,6 +122,7 @@ namespace mp.pddn
         protected void AddMemberPin(MemberInfo member)
         {
             if (!AllowMember(member)) return;
+            var oattr = MemberAttributeHandler<OutputAttribute>(member);
 
             Type memberType = typeof(object);
             switch (member)
@@ -343,77 +136,37 @@ namespace mp.pddn
             }
             var enumerable = false;
             var dictionary = false;
+            var allowEnumconv = AllowEnumBinsizing(member, memberType);
 
-            var allowEnumconv = !(OptOutEnumerable?.Contains(memberType) ?? false);
-            if (allowEnumconv && memberType.IsConstructedGenericType)
-            {
-                if (OptOutEnumerable?.Contains(memberType.GetGenericTypeDefinition()) ?? false) allowEnumconv = false;
-            }
+            GetEnumerableGenerics(member, memberType, out var potentialGenDictT, out var potentialGenEnumT);
 
-            if (allowEnumconv && memberType.GetInterface("IDictionary") != null)
+            if (allowEnumconv && potentialGenDictT != null)
             {
-                try
-                {
-                    var interfaces = memberType.GetInterfaces().ToList();
-                    interfaces.Add(memberType);
-                    var stype = interfaces
-                        .Where(type =>
-                        {
-                            try
-                            {
-                                var res = type.GetGenericTypeDefinition();
-                                if (res == null) return false;
-                                return res == typeof(IDictionary<,>);
-                            }
-                            catch (Exception)
-                            {
-                                return false;
-                            }
-                        })
-                        .First().GenericTypeArguments;
-                    Pd.AddOutput(TransformType(stype[0], member), new OutputAttribute(member.Name + " Keys"), binSized: true);
-                    Pd.AddOutput(TransformType(stype[1], member), new OutputAttribute(member.Name + " Values"), binSized: true);
-                    dictionary = true;
-                }
-                catch (Exception)
-                {
-                    Pd.AddOutput(TransformType(memberType, member), new OutputAttribute(member.Name));
-                    dictionary = false;
-                }
+                var stype = potentialGenDictT.GenericTypeArguments;
+                oattr.Name = member.Name + " Values";
+                oattr.BinVisibility = oattr.Visibility == PinVisibility.OnlyInspector
+                    ? PinVisibility.OnlyInspector
+                    : PinVisibility.Hidden;
+
+                var kattr = (OutputAttribute) oattr.Clone();
+                kattr.Name = member.Name + " Keys";
+                kattr.BinVisibility = PinVisibility.OnlyInspector;
+                Pd.AddOutput(TransformType(stype[0], member), kattr, binSized: true);
+                Pd.AddOutput(TransformType(stype[1], member), oattr, binSized: true);
+                dictionary = true;
             }
-            else if (allowEnumconv && memberType.GetInterface("IEnumerable") != null && memberType != typeof(string))
+            else if (allowEnumconv && potentialGenEnumT != null)
             {
-                try
-                {
-                    var interfaces = memberType.GetInterfaces().ToList();
-                    interfaces.Add(memberType);
-                    var stype = interfaces
-                        .Where(type =>
-                        {
-                            try
-                            {
-                                var res = type.GetGenericTypeDefinition();
-                                if (res == null) return false;
-                                return res == typeof(IEnumerable<>);
-                            }
-                            catch (Exception)
-                            {
-                                return false;
-                            }
-                        })
-                        .First().GenericTypeArguments[0];
-                    Pd.AddOutput(TransformType(stype, member), new OutputAttribute(member.Name), binSized: true);
-                    enumerable = true;
-                }
-                catch (Exception)
-                {
-                    Pd.AddOutput(TransformType(memberType, member), new OutputAttribute(member.Name));
-                    enumerable = false;
-                }
+                var stype = potentialGenEnumT.GenericTypeArguments[0];
+                oattr.BinVisibility = oattr.Visibility == PinVisibility.OnlyInspector
+                    ? PinVisibility.OnlyInspector
+                    : PinVisibility.Hidden;
+                Pd.AddOutput(TransformType(stype, member), oattr, binSized: true);
+                enumerable = true;
             }
             else
             {
-                Pd.AddOutput(TransformType(memberType, member), new OutputAttribute(member.Name));
+                Pd.AddOutput(TransformType(memberType, member), oattr);
                 enumerable = false;
             }
             AddMemberAttributePin(member);
@@ -448,15 +201,17 @@ namespace mp.pddn
 
         protected void AssignMemberValue(MemberInfo member, object input, int i, MemberValueCache valueCache)
         {
-            object memberValue = valueCache != null ? valueCache.Getter(input) : GetMemberValue(member, input);
+            var memberValue = valueCache?.Getter(input) ?? GetMemberValue(member, input);
 
             if (IsMemberDictionary[member])
             {
-                var dict = (IDictionary)memberValue;
                 var keyspread = (ISpread)Pd.OutputPins[member.Name + " Keys"][i];
                 var valuespread = (ISpread)Pd.OutputPins[member.Name + " Values"][i];
-
                 keyspread.SliceCount = valuespread.SliceCount = 0;
+
+                if (memberValue == null) return;
+                var dict = (IDictionary)memberValue;
+
                 foreach (var k in dict.Keys)
                 {
                     keyspread.SliceCount++;
@@ -469,15 +224,18 @@ namespace mp.pddn
                 }
                 if (valueCache != null)
                 {
-                    valueCache.Collection = valuespread;
-                    valueCache.Keys = keyspread;
+                    valueCache.Collection = valuespread.ToObjectArray(valueCache.Collection);
+                    valueCache.Keys = keyspread.ToObjectArray(valueCache.Keys);
                 }
             }
             else if (IsMemberEnumerable[member])
             {
-                var enumerable = (IEnumerable)memberValue;
                 var spread = (ISpread)Pd.OutputPins[member.Name][i];
                 spread.SliceCount = 0;
+
+                if(memberValue == null) return;
+                var enumerable = (IEnumerable)memberValue;
+
                 foreach (var o in enumerable)
                 {
                     spread.SliceCount++;
@@ -485,7 +243,7 @@ namespace mp.pddn
                 }
 
                 if (valueCache != null)
-                    valueCache.Collection = spread;
+                    valueCache.Collection = spread.ToObjectArray(valueCache.Collection);
             }
             else
             {
@@ -501,12 +259,27 @@ namespace mp.pddn
         {
             if (IsMemberDictionary[member])
             {
-                Pd.OutputPins[member.Name + " Keys"][i] = valueCache.Keys;
-                Pd.OutputPins[member.Name + " Values"][i] = valueCache.Collection;
+                var keyspread = (ISpread)Pd.OutputPins[member.Name + " Keys"][i];
+                keyspread.SliceCount = valueCache.Keys.Length;
+                for (int j = 0; j < valueCache.Keys.Length; j++)
+                {
+                    keyspread[j] = valueCache.Keys[j];
+                }
+                var valspread = (ISpread)Pd.OutputPins[member.Name + " Values"][i];
+                valspread.SliceCount = valueCache.Collection.Length;
+                for (int j = 0; j < valueCache.Collection.Length; j++)
+                {
+                    valspread[j] = valueCache.Collection[j];
+                }
             }
             else if (IsMemberEnumerable[member])
             {
-                Pd.OutputPins[member.Name][i] = valueCache.Collection;
+                var valspread = (ISpread)Pd.OutputPins[member.Name][i];
+                valspread.SliceCount = valueCache.Collection.Length;
+                for (int j = 0; j < valueCache.Collection.Length; j++)
+                {
+                    valspread[j] = valueCache.Collection[j];
+                }
             }
             else
             {
@@ -569,6 +342,7 @@ namespace mp.pddn
             OnEvaluateBegin();
             if (FInput.SliceCount == 0)
             {
+                IsChanged();
                 foreach (var outpin in Pd.OutputPins.Values)
                 {
                     outpin.Spread.SliceCount = 0;
