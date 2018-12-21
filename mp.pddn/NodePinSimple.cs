@@ -86,9 +86,10 @@ namespace mp.pddn
                 _pin.GetUpstreamInterface(out object usi);
                 return usi;
             }
-            catch
+            catch (Exception e)
             {
-                return null;
+                // make sure this exceprion is getting caught and won't spam debugging
+                return e != null ? null : e;
             }
         }
 
@@ -208,6 +209,8 @@ namespace mp.pddn
                 _binSizePin.GetValue(i, out var btemp);
                 int currbin = (int) btemp;
                 var offsets = ConstructBinOffsets();
+                    if(offsets.Count <= 0) return new List<object>();
+
                 int curroffs = offsets[i % offsets.Count];
                 if (currbin < 0)
                 {
@@ -264,9 +267,10 @@ namespace mp.pddn
                 _pin.GetUpstreamInterface(out object usi);
                 return usi;
             }
-            catch
+            catch (Exception e)
             {
-                return null;
+                // make sure this exceprion is getting caught and won't spam debugging
+                return e != null ? null : e;
             }
         }
 
