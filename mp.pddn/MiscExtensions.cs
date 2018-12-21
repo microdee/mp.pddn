@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using md.stdl.Mathematics;
+using VVVV.PluginInterfaces.V2.NonGeneric;
 using VVVV.Utils.VMath;
 using VMatrix = VVVV.Utils.VMath.Matrix4x4;
 using SMatrix = System.Numerics.Matrix4x4;
@@ -131,6 +132,39 @@ namespace mp.pddn
                 default:
                 {
                     return obj;
+                }
+            }
+        }
+
+        public static object[] ToObjectArray(this ISpread spread, object[] buffer = null)
+        {
+            if(buffer == null)
+            {
+                var res = new object[spread.SliceCount];
+                for (int i = 0; i < spread.SliceCount; i++)
+                {
+                    res[i] = spread[i];
+                }
+                return res;
+            }
+            else
+            {
+                if (buffer.Length != spread.SliceCount)
+                {
+                    var res = new object[spread.SliceCount];
+                    for (int i = 0; i < spread.SliceCount; i++)
+                    {
+                        res[i] = spread[i];
+                    }
+                    return res;
+                }
+                else
+                {
+                    for (int i = 0; i < spread.SliceCount; i++)
+                    {
+                        buffer[i] = spread[i];
+                    }
+                    return buffer;
                 }
             }
         }
